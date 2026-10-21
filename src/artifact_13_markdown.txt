@@ -1,0 +1,18 @@
+1/3 🚀 Introducing MultiHopper: The enterprise-grade, atomic multi-hop routing & real-time revenue-share protocol on @Solana!
+
+Liquidity fragmentation and sandwich MEV have plagued complex routes—until now. 
+
+We built an atomic execution engine that routes up to 4 DEX legs in ONE tx. 🧵👇
+
+2/3 ⚡ Under the hood:
+• Atomic CPI hops (Orca, Raydium, Meteora, Phoenix)
+• Native Jito-Solana bundle integration for total sandwich MEV immunity
+• Programmatic on-chain revenue share & affiliate splits built into the protocol PDA
+• Full institutional telemetry powered by @Resend & Webhooks
+
+3/3 🏆 Built for the MultiHopper Build & Route Challenge!
+Turnkey Dockerization, verified Anchor test suite, and ready for mainnet-beta scale today.
+
+Check out our submission repo & test artifacts on GitHub! 🌐⚓️ 
+
+#Solana #DeFi #SolanaEcosystem #Rust #Anchor #Web3

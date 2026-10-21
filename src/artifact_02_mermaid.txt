@@ -1,0 +1,50 @@
+flowchart TD
+    subgraph ClientLayer["Client & Ingestion Layer"]
+        User["Institutional Trader / Frontend UI"]
+        CLI["MultiHopper Automation Worker / CLI Engine"]
+    end
+
+    subgraph OffChainEngine["MultiHopper Off-Chain Route Optimizer"]
+        GraphEngine["DEX Graph Pathfinding Engine (Bellman-Ford / Dijkstra)"]
+        JitoBuilder["Jito MEV Bundle Builder & Tip Injector"]
+        AuditService["Enterprise Webhook & Resend Dispatcher"]
+    end
+
+    subgraph SolanaRuntime["Solana On-Chain Runtime (MultiHopper Core)"]
+        RouterEntry["Program: multihopper_router"]
+        ConfigState["PDA: Router Global Config & Fee State"]
+        PartnerState["PDA: Partner Revenue Share State"]
+        EscrowVault["PDA: Intermediate Ephemeral Token Vault"]
+        
+        subgraph AMMs["DEX Liquidity Pools (CPI Invocation)"]
+            Orca["Orca Whirlpools / Meteora DLMM"]
+            Raydium["Raydium Concentrated Liquidity"]
+            OpenBook["Phoenix / OpenBook v2"]
+        end
+    end
+
+    subgraph ExternalTelemetry["Enterprise Reporting & Settlement"]
+        Resend["Resend API: Institutional Execution Receipts"]
+        Slack["Enterprise Slack / Discord Ops Alerts"]
+        JitoBlockEngine["Jito Block Engine (Direct Validator Pipeline)"]
+    end
+
+    User -->|1. Submit Quote Request| CLI
+    CLI -->|2. Compute Optimal Multi-Hop Route| GraphEngine
+    GraphEngine -->|3. Generate Serialized Route Instructions| JitoBuilder
+    JitoBuilder -->|4. Construct Atomic Transaction + Jito Tip| JitoBlockEngine
+    JitoBlockEngine -->|5. Land Transaction at Leader| RouterEntry
+
+    RouterEntry -->|6. Validate Config & Pause State| ConfigState
+    RouterEntry -->|7. Deduct Dynamic Partner/Protocol Fee| PartnerState
+    RouterEntry -->|8. Leg 1 Swap CPI| Orca
+    Orca -->|Intermediate Mint A| EscrowVault
+    RouterEntry -->|9. Leg 2 Swap CPI| Raydium
+    Raydium -->|Intermediate Mint B| EscrowVault
+    RouterEntry -->|10. Leg 3 Swap CPI| OpenBook
+    OpenBook -->|11. Final Token Disbursement| User
+
+    RouterEntry -->|12. Emit MultiHopExecutionEvent| CLI
+    CLI -->|13. Push Transaction Digest| AuditService
+    AuditService -->|14. Send Audit Email & Alerts| Resend
+    AuditService -->|15. Webhook Broadcast| Slack

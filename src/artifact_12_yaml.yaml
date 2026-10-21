@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  multihopper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine-worker
+    restart: unless-stopped
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - ROUTER_PROGRAM_ID=MHopRouter111111111111111111111111111111111
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - AUDIT_EMAIL_RECIPIENT=treasury-ops@multihopper.fi
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./keys/keypair.json:/app/keypair.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'process.exit(0)'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

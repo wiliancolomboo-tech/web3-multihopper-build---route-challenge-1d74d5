@@ -1,0 +1,11 @@
++----------------------------------------------------------------------------------------------------+
+|                                    MultiHopper Value Ledger                                        |
++------------------------------------+---------------------------------------------------------------+
+| Feature                            | Enterprise Impact                                             |
++------------------------------------+---------------------------------------------------------------+
+| Atomic Multi-Hop (Up to 4 Legs)    | Zero intermediate custody risk; zero partial execution risk   |
+| Real-Time Dynamic Revenue Share    | Sub-second automated yield & fee attribution for affiliates    |
+| Slippage Invariant Verification    | Strict pre/post balance Delta verification via CPI anchors    |
+| Jito-Solana MEV Bundle Adapter     | Guaranteed frontrun-protected block inclusion                  |
+| Turnkey Resend/Webhook Telemetry   | Institutional audit trail with cryptographically signed logs  |
++------------------------------------+---------------------------------------------------------------+
