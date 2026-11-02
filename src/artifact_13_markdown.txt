@@ -1,18 +1,22 @@
-1/3 🚀 Introducing MultiHopper: The enterprise-grade, atomic multi-hop routing & real-time revenue-share protocol on @Solana!
+🧵 1/3
+Tired of multi-hop swaps reverting on Solana due to sandwich bots and intermediate pool dust?
 
-Liquidity fragmentation and sandwich MEV have plagued complex routes—until now. 
+Enter MultiHopper Prime: The institutional-grade, atomic multi-hop route & swap aggregation engine built natively for @Solana Sealevel runtime. 
 
-We built an atomic execution engine that routes up to 4 DEX legs in ONE tx. 🧵👇
+Zero dust. Sub-second paths. Programmatic revenue sharing. ⚡👇
 
-2/3 ⚡ Under the hood:
-• Atomic CPI hops (Orca, Raydium, Meteora, Phoenix)
-• Native Jito-Solana bundle integration for total sandwich MEV immunity
-• Programmatic on-chain revenue share & affiliate splits built into the protocol PDA
-• Full institutional telemetry powered by @Resend & Webhooks
+🧵 2/3
+What makes MultiHopper Prime different?
+🛡️ Strict On-Chain Atomicity: Dynamic CPI validation enforces invariant out balances across up to 4 hops.
+💸 Programmatic Rev-Share: 80/20 non-custodial fee splits disburse instantly to partners per trade.
+🥩 Jito-Solana MEV Shield: Zero public mempool exposure—swaps execute bundle-protected.
 
-3/3 🏆 Built for the MultiHopper Build & Route Challenge!
-Turnkey Dockerization, verified Anchor test suite, and ready for mainnet-beta scale today.
+🧵 3/3
+Turnkey operations ready today:
+✅ Full @AnchorLang production program
+✅ Complete TypeScript pathfinding CLI
+✅ Enterprise Slack & @resend alerts
+✅ 1-click Docker deployment
 
-Check out our submission repo & test artifacts on GitHub! 🌐⚓️ 
-
-#Solana #DeFi #SolanaEcosystem #Rust #Anchor #Web3
+Check out our submission for the MultiHopper Build & Route Challenge! 🚀
+Repo: https://github.com/multihopper/multihopper-engine

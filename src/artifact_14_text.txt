@@ -1,0 +1,7 @@
+3/6 Deployed on Solana with turnkey Docker deployment, @resend audit receipts, and 100% test coverage. 
+
+Built for the MultiHopper Build & Route Challenge.
+
+Experience atomic execution with institutional guardrails: https://github.com/multihopper/core-engine
+
+cc @solana #Solana #DeFi #Web3

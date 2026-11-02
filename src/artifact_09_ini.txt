@@ -1,0 +1,12 @@
+# Solana Network Configurations
+SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY
+JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
+PROGRAM_ID=HoprXX7dY9QcQ92Xq3UjV2F8F1p8fA3j4K8K5h6u1kY
+
+# Enterprise Alerting & Communication
+RESEND_API_KEY=re_1234567890abcdef
+ALERT_EMAIL=sponsor-treasury@solana.org
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxxx/yyyy
+
+# Security Operator Credentials (JSON array of 64 bytes)
+PAYER_KEYPAIR=[1,2,3...64]

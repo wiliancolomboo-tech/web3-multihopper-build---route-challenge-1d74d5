@@ -1,0 +1,32 @@
+flowchart TD
+    subgraph ClientLayer["Enterprise Integrator & User Layer"]
+        User["End Trader / Web3 App"] -->|1. Request Optimal Swap Route| ClientCLI["MultiHopper Routing Client / SDK"]
+        ClientCLI -->|2. Path Query| RouteEngine["MultiHopper Graph Routing Daemon"]
+    end
+
+    subgraph OffChainEngine["MultiHopper Off-Chain Core"]
+        RouteEngine -->|Fetch Pool Reserves & Bins| SolanaRPC["Solana Geyser / High-Speed RPC"]
+        RouteEngine -->|Graph Traversal Dijkstra/Yen's| PathFinder["Optimal Multi-Hop Arbitrage & Swap Engine"]
+        PathFinder -->|Compute Fees & Dynamic Split| FeeModel["RevShare Matrix (Integrator / Protocol)"]
+        FeeModel -->|Assemble Atomic Tx| TxBuilder["Solana Tx Assembler"]
+        TxBuilder -->|Send Bundle| JitoMEV["Jito Block Engine (MEV Protection)"]
+    end
+
+    subgraph OnChainProtocol["Solana On-Chain MultiHopper Program"]
+        JitoMEV -->|Execute Atomic Tx| RouterEntry["multi_hopper::swap_exact_tokens_for_tokens"]
+        RouterEntry -->|Validate Authority & Constraints| Guard["Invariants & Slippage Guard"]
+        Guard -->|Hop 1 CPI| Pool1["DEX Pool 1 (Raydium CPMM)"]
+        Pool1 -->|Hop 2 CPI| Pool2["DEX Pool 2 (Orca Whirlpool)"]
+        Pool2 -->|Hop 3 CPI| Pool3["DEX Pool 3 (Meteora DLMM)"]
+        Pool3 -->|Verify Invariant Min Out| InvariantCheck["Out Amount >= min_amount_out"]
+        InvariantCheck -->|Distribute Revenue Share| RevShareModule["Atomic Fee Splitter PDA"]
+        RevShareModule -->|Transfer Cut| IntegratorVault["Integrator Token Account"]
+        RevShareModule -->|Transfer Cut| ProtocolTreasury["MultiHopper DAO Treasury"]
+        RevShareModule -->|Transfer Remainder| UserATA["User Output Token Account"]
+    end
+
+    subgraph TelemetryLayer["Enterprise Notification & Audit"]
+        RouterEntry -.->|Program Logs & Events| LogMonitor["Log Telemetry Listener"]
+        LogMonitor -->|Swap Executed Webhook| SlackDiscord["Slack / Discord Webhook Alert"]
+        LogMonitor -->|Settlement Digest Email| ResendAPI["Resend Enterprise Email Service"]
+    end

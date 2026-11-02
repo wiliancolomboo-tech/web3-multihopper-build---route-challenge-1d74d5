@@ -1,0 +1,6 @@
+PORT=8080
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+SOLANA_KEYPAIR_PATH=/root/.config/solana/id.json
+DISCORD_SLACK_WEBHOOK_URL=https://discord.com/api/webhooks/1234567890/example-token
+RESEND_API_KEY=re_123456789abcdef
+ADMIN_ALERT_EMAIL=treasury@sponsor-protocol.io

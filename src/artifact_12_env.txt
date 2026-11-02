@@ -1,0 +1,7 @@
+# MultiHopper Enterprise Environment Configuration
+SOLANA_RPC_URL=https://api.devnet.solana.com
+PROGRAM_ID=MHoP89Q1yF9FkYVv9gTf6hLqX7N9PZ4W7MhoPmult1h
+SIGNER_PRIVATE_KEY=[1,2,3,4,...]
+RESEND_API_KEY=re_123456789abcdef
+AUDIT_EMAIL_RECIPIENT=treasury-ops@multihopper.internal
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your/webhook/url

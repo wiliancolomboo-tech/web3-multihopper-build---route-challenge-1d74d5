@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor Trader as User / DApp
+    participant Solver as MultiHopper Solver CLI
+    participant Program as MultiHopper Program (SVM)
+    participant AMMA as AMM Hop #1
+    participant AMMB as AMM Hop #2
+    participant Treasury as MultiHopper Treasury
+    participant Partner as Partner Account
+    participant Webhook as Resend / Slack Webhook
+
+    Trader->>Solver: Request Route (Token A -> Token C, Amount: 100 USDC)
+    Solver->>Solver: Graph Traversal (A -> B -> C): Estimated Out = 1.05 SOL
+    Solver->>Trader: Sign & Approve Transaction Payload
+    Trader->>Program: execute_multi_hop_swap(min_out: 1.00 SOL, hops: 2)
+    Program->>AMMA: CPI Swap Hop 1 (USDC -> Token B)
+    AMMA-->>Program: Return Intermediate Token B
+    Program->>AMMB: CPI Swap Hop 2 (Token B -> SOL)
+    AMMB-->>Program: Return Output SOL (1.05 SOL delivered)
+    Program->>Program: Verify (1.05 SOL >= 1.00 SOL). Surplus = 0.05 SOL.
+    Program->>Trader: Transfer 1.035 SOL (Principal + 70% Surplus)
+    Program->>Partner: Transfer 0.010 SOL (20% Surplus)
+    Program->>Treasury: Transfer 0.005 SOL (10% Surplus)
+    Program-->>Solver: Emit RouteExecutionEvent
+    Solver->>Webhook: Post Execution Dispatch (Latency, Route, Profit Split)

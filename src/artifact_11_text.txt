@@ -1,0 +1,3 @@
+Liquidity fragmentation on @solana costs traders millions in slippage and predatory MEV. naive single/dual-pool routers simply cannot handle institutional order sizes across fragmented AMMs.
+
+Introducing Aegis MultiHopper: An atomic, N-hop SVM routing engine built for maximum yield and zero sandwich risk. 🧵👇

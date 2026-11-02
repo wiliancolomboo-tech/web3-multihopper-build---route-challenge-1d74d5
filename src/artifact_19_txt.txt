@@ -1,0 +1,15 @@
++-----------------------------------+-----------------------------------+------------------------------------------+
+| ISSUE TRIGGER                     | ROOT CAUSE                        | OPERATIONAL RESOLUTION                   |
++-----------------------------------+-----------------------------------+------------------------------------------+
+| HTTP 429 from RPC                 | Standard RPC node rate-limiting   | Route traffic to dedicated Helius/Triton |
+|                                   | during high network volatility    | Geyser gRPC feeder.                      |
++-----------------------------------+-----------------------------------+------------------------------------------+
+| Jito Bundle Timeout (Error 4001)  | Tip amount too low for current    | Increase dynamic base tip from 10k to    |
+|                                   | leader auction slot contention    | 50k lamports in `multihopper_engine.ts`. |
++-----------------------------------+-----------------------------------+------------------------------------------+
+| `SlippageExceeded` Reverts        | Rapid tick moving in Whirlpool    | Adjust off-chain quote freshness window  |
+|                                   | pool during hop-2 execution       | from 500ms down to <150ms.               |
++-----------------------------------+-----------------------------------+------------------------------------------+
+| Zero Affiliate PDA Yield          | Unregistered affiliate address    | Execute `register_affiliate` instruction |
+|                                   | passed in instruction context     | to initialize the target affiliate PDA.  |
++-----------------------------------+-----------------------------------+------------------------------------------+

@@ -1,0 +1,5 @@
+SOLANA_RPC_URL="https://api.devnet.solana.com"
+MULTI_HOPPER_PROGRAM_ID="HoppEr5V1aM2wBhkb41VqWk23M17mPnN3q5HkLw4P6yq"
+SOLANA_PRIVATE_KEY_JSON="[1,23,45,...]"
+RESEND_API_KEY="re_123456789"
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."

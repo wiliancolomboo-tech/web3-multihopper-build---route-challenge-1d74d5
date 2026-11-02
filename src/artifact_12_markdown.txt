@@ -1,0 +1,18 @@
+1/3 🚀 Introducing MultiHopper: The institutional-grade Multi-Hop Routing & Execution Protocol built for @Solana's ultra-liquid ecosystem.
+
+Zero-slippage breaches. MEV-shielded dynamic paths. Programmatic on-chain revenue share.
+
+Here is what we built for the MultiHopper Build & Route Challenge 🧵👇
+
+2/3 ⚡ Multi-hop swaps across Raydium CLMM, @Orca_so Whirlpools & @MeteoraAG DLMM often suffer from state-staling & toxic sandwiching.
+
+MultiHopper solves this with:
+✅ Yen's K-Shortest Paths dynamic graph router
+✅ Jito MEV bundle atomic inclusion
+✅ Built-in Resend trade audit receipts & Slack ops alerts
+
+3/3 💰 Built to scale ecosystem revenue: MultiHopper settles swaps atomically on-chain with deterministic bps fee splits routed straight to sponsor vaults.
+
+Open-source, 100% test coverage, turnkey Dockerized orchestration.
+
+Check the submission and contract on GitHub: https://github.com/multihopper-protocol/multihopper-core #Solana #DeFi #SolanaDev

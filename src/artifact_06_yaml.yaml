@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  multihopper-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - PROGRAM_ID=MHopRouter111111111111111111111111111111111
+      - KEYPAIR_PATH=/secrets/payer.json
+      - SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+      - RESEND_API_KEY=re_123456789_abcdef
+    volumes:
+      - ./keys:/secrets:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

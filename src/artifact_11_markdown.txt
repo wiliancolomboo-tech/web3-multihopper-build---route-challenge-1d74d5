@@ -1,0 +1,18 @@
+1/4 🧵 Liquidity on @Solana is richer than ever, but cross-pool multi-hop swaps still leak millions in slippage & sandwich MEV. 
+
+Introducing MultiHopper: The enterprise-grade multi-hop swap & route execution engine built for the next generation of Solana DeFi. ⚡️🦀
+
+2/4 💡 What sets MultiHopper apart:
+- Zero-dust atomic CPI routing across DLMM, CLMM, & AMMs
+- Per-hop strict slippage bounds (no sandwich exploits)
+- Dynamic Jito bundle bundling for MEV immunity
+- Native, programmatic 70/30 fee revenue share with integrators
+
+3/4 🛡 Enterprise Ready Out-of-the-Box:
+Backed by an end-to-end Anchor core program, turnkey TypeScript automation CLI, containerized Docker deployment, and real-time audit receipts via @resend and Slack.
+
+4/4 Check out our open-source submission for the MultiHopper Build & Route Challenge:
+github.com/multihopper/multihopper-core
+
+Let’s bring institutional execution quality to every trade on Solana! 🚀
+#Solana #DeFi #Web3 #Rust #Anchor

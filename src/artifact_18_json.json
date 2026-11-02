@@ -1,0 +1,9 @@
+{
+  "status": "UP",
+  "programId": "HoppEr55555555555555555555555555555555555555",
+  "solanaSlot": 268921004,
+  "mempoolSyncLagMs": 42.1,
+  "activeRoutePools": 1420,
+  "circuitBreakerPaused": false,
+  "totalRevShareDispatchedLamports": "492190000000"
+}

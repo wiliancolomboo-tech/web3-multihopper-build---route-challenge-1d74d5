@@ -1,0 +1,9 @@
++---------------------------------------------------------------------------------------+
+| Incident Classification & Telemetry Verification                                      |
++----------------------+-----------------------------+----------------------------------+
+| Anomaly              | Trigger Condition           | Remediation Action               |
++----------------------+-----------------------------+----------------------------------+
+| Slippage Exhaustion  | SlippageExceeded code 6005  | Check venue pool depths; recalibrate|
+| RPC Disconnect       | HTTP 429 / Block lag > 15   | Switch endpoint to fallback RPC  |
+| Buffer Balance Leak  | Intermediate Vault ATA > 0  | Re-run atomic sweep instruction  |
++----------------------+-----------------------------+----------------------------------+

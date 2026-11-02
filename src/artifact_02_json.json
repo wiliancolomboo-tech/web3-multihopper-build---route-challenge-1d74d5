@@ -1,0 +1,17 @@
+{
+  "event": "ROUTE_EXECUTED",
+  "signature": "5Kk3m9...solana_tx_sig",
+  "timestamp": 1717904000,
+  "route": ["So11111111111111111111111111111111111111112", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"],
+  "amountIn": "1000000000",
+  "amountOut": "45230000",
+  "slippageBps": 50,
+  "hopsExecuted": 2,
+  "revenueShare": {
+    "protocolFeeAmount": "45230",
+    "integratorFeeAmount": "22615",
+    "integratorRecipient": "8x2W...IntegratorPubkey"
+  },
+  "computeUnitsConsumed": 87450,
+  "executionDurationMs": 412
+}

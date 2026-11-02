@@ -1,0 +1,1 @@
+yarn ts-node scripts/admin-controls.ts --pause true

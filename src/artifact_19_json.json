@@ -1,0 +1,8 @@
+{
+  "status": "HEALTHY",
+  "version": "1.0.0",
+  "programId": "MHopRoutEngine11111111111111111111111111111",
+  "latencyMs": 14,
+  "jitoConnection": "CONNECTED",
+  "activePoolTrackers": 284
+}

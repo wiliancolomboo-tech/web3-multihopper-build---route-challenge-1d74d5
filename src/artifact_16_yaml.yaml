@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  multihopper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - SOLANA_PRIVATE_KEY=${SOLANA_PRIVATE_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ALERT_EMAIL=${ALERT_EMAIL:-ops@multihopper.fi}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('MultiHopper Operational')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

@@ -1,0 +1,21 @@
+================================================================================
+                    MULTIHOPPER PROTOCOL OPERATIONAL RUNBOOK
+================================================================================
+
+1. INCIDENT: SLIPPAGE SPIKE / EXCESS REVERTS (>5% in 5 min)
+   - Trigger: Discord alert or Prometheus alert: 'MultiHopperHighRevertRate'
+   - Action: 
+     a. Query daemon logs: `docker logs multihopper-route-worker --tail 200`
+     b. Verify whether price divergence originates from high-volatility pool (e.g. DLMM bin shift).
+     c. Dynamically scale the minimum out buffer parameter in the routing daemon client config.
+
+2. RUNTIME REVENUE AUDIT & RECONCILIATION
+   - Command: `anchor run audit-integrator --integrator-id <ID>`
+   - Verifies on-chain accumulated revenue PDAs against internal accounting ledgers.
+   - Sweep integrator fees: Execute authorized claim instruction to payout destinations.
+
+3. ROTATION OF PROTOCOL AUTHORITY KEYS
+   - Uses multi-sig Squads v3 interface.
+   - Transfer protocol authority via Anchor:
+     `multihopper_engine::set_authority(new_authority_multisig_pda)`
+================================================================================

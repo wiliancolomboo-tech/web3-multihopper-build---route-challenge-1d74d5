@@ -1,0 +1,8 @@
+SOLANA_RPC_URL="https://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+SOLANA_WS_URL="wss://mainnet.helius-rpc.com/?api-key=YOUR_KEY"
+ROUTER_PROGRAM_ID="Hop91XmB4k2N5g3R7v8W6zYQp8C9D1E2F3G4H5J6K7L8"
+KEYPAIR_SECRET_KEY="[12,45,23,78,...]"
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/123456789/abcdef"
+RESEND_API_KEY="re_abc123456789"
+ALERT_EMAIL_RECIPIENT="ops-lead@protocol.io"
+PORT=8080

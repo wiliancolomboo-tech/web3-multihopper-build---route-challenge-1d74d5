@@ -1,0 +1,18 @@
+🧵 1/3
+High slippage and toxic MEV frontrunning are costing @Solana traders millions across fragmented pools. 
+
+Introducing MultiHopper: An institutional, atomic multi-hop routing protocol with automated revenue sharing and sub-12ms execution paths! ⚡️🪐
+
+#Solana #DeFi #Rust #Anchor
+
+🧵 2/3
+Why MultiHopper wins:
+✅ Micro-graph path solver uniting Raydium, Orca Whirlpools, and Meteora DLMM
+✅ MEV-shielded via atomic transit vaults & Jito block bundles
+✅ On-chain, trustless fee-sharing split directly to partner wallets
+✅ Enterprise-ready Slack & Resend ops telemetry
+
+🧵 3/3
+The codebase is 100% production-ready, fully covered by unit & integration test suites, and turnkey dockerized for institutional routing desks.
+
+Check out our submission and build future-proof DeFi routes with us! 🚀

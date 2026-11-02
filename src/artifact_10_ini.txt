@@ -1,0 +1,14 @@
+# Solana Network Configuration
+SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY
+SOLANA_KEYPAIR_PATH=/etc/multihopper/keypair.json
+JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf/api/v1/bundles
+
+# MultiHopper Protocol Settings
+PROGRAM_ID=HopZ111111111111111111111111111111111111111
+DEFAULT_FEE_BPS=10
+DEFAULT_REV_SHARE_BPS=3000
+
+# Enterprise Telemetry & Notifications
+RESEND_API_KEY=re_123456789_enterprise_token
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your_webhook_id/your_token
+PORT=8080

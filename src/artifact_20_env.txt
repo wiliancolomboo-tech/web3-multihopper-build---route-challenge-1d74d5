@@ -1,0 +1,4 @@
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+ENTERPRISE_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+RESEND_API_KEY=re_your_secret_resend_key
+OPS_ALERT_EMAIL=treasury-alerts@protocol.io

@@ -1,0 +1,14 @@
+# Solana Network Configuration
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+SOLANA_KEYPAIR_PATH=/app/keys/relayer-keypair.json
+
+# Enterprise Notification Telemetry
+RESEND_API_KEY=re_1234567890abcdef
+REPORT_RECIPIENT_EMAIL=finance@protocol.com
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/123/xyz
+SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+
+# Router Specifics
+ROUTER_PROGRAM_ID=MHoP88nU1qQ3Z1J7r6vH6e3sXQn4L2k8pG9y8tV4bWa
+MAX_ALLOWED_HOPS=4
+DEFAULT_SLIPPAGE_BPS=50

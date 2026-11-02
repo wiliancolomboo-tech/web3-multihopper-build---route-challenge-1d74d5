@@ -1,0 +1,7 @@
+Under the hood:
+🔹 Sub-12ms off-chain routing graph engine
+🔹 Atomic on-chain execution with zero intermediate token custody risk
+🔹 Sandwich-proof routing via direct Jito Validator MEV bundles
+🔹 Native 3-way atomic fee & affiliate revenue-share PDA settlements
+
+Every hop is verified within a single transaction boundary. If output slips by 1 lamport, the transaction rolls back without capital loss. 🛡️

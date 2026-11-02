@@ -1,0 +1,9 @@
+{
+  "status": "healthy",
+  "uptime_seconds": 18420,
+  "last_slot_indexed": 268492041,
+  "active_pools_monitored": 1420,
+  "successful_swaps_24h": 512,
+  "failed_routes_prevented": 34,
+  "total_revenue_share_sol": 18.42
+}

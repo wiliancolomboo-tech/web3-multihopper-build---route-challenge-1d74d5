@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  multihopper-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper_routing_daemon
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf/api/v1/bundles
+      - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
+      - RESEND_API_KEY=re_enterprise_live_key
+      - AUDIT_ALERT_EMAIL=ops@enterprise-treasury.io
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 0"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    ports:
+      - "8080:8080"

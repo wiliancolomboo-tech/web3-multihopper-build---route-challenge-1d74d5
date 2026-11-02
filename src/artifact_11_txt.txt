@@ -1,0 +1,14 @@
++-------------------------------------------------------------------------------------------------------+
+|                                    OPERATIONAL INCIDENT PLAYBOOK                                      |
++--------------------------+---------------------------------------+------------------------------------+
+| Symptom / Event          | Probable Root Cause                   | Resolution Action                  |
++--------------------------+---------------------------------------+------------------------------------+
+| SlippageExceeded Reverts | Extreme market volatility / frontrun  | Check pool volatility; update      |
+|                          | attempts on intermediate pair         | slippage parameters or route solver|
++--------------------------+---------------------------------------+------------------------------------+
+| HTTP 500 on Jito Relay   | Jito Block Engine rate-limit or tip   | Increase tip multiplier in config; |
+|                          | floor increase                        | verify dynamic gas-price oracle    |
++--------------------------+---------------------------------------+------------------------------------+
+| Protocol Paused Trigger  | Emergency stop invoked via admin key  | Audit state, verify treasury keys, |
+|                          |                                       | invoke unpause via admin authority |
++--------------------------+---------------------------------------+------------------------------------+

@@ -1,0 +1,10 @@
++-----------------------------------------------------------------------------------------+
+|                                OPERATIONAL HEALTH MATRIX                                |
++-----------------------+-----------------------------+-----------------------------------+
+| Metric                | Target                      | Alert Threshold                   |
++-----------------------+-----------------------------+-----------------------------------+
+| Solver Latency        | < 12ms                      | > 45ms (Re-index AMM pools)       |
+| Swap Failure Rate     | < 0.05%                     | > 1.0% (Check slippage tolerance) |
+| Compute Unit Burn     | 185,000 CUs (3 Hops)        | > 350,000 CUs                     |
+| Partner Share Accrual | Real-time on-chain split    | Daily audit reconciliation        |
++-----------------------+-----------------------------+-----------------------------------+

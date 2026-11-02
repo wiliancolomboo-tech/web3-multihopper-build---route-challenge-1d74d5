@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  multihopper-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-routing-daemon
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - SOLANA_WS_URL=wss://api.mainnet-beta.solana.com
+      - JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - ENTERPRISE_ALERT_EMAIL=${ENTERPRISE_ALERT_EMAIL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"

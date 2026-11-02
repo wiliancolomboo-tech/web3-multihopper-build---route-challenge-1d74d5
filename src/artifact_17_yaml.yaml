@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  multihopper-solver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - RELAYER_PRIVATE_KEY=${RELAYER_PRIVATE_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

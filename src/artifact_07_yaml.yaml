@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  multihopper-routing-daemon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine
+    restart: always
+    environment:
+      - PORT=8080
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - AGENT_PRIVATE_KEY=[YOUR_DEPLOYER_PRIVATE_KEY_ARRAY]
+      - MULTI_HOPPER_PROGRAM_ID=MHoP8uNq1xPZkH3vKkM9N5Q9w2e3F4r5T6y7U8i9o0P
+      - RESEND_API_KEY=re_1234567890abcdef
+      - AUDIT_EMAIL_RECIPIENT=institutional-audits@fund.com
+      - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your/webhook/path
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"

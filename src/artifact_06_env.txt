@@ -1,0 +1,11 @@
+NODE_ENV=production
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+WALLET_PRIVATE_KEY=[12,43,155,78,...]
+PROGRAM_ID=MHop111111111111111111111111111111111111111
+
+# Enterprise Telemetry Integrations
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-id/your-token
+SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+RESEND_API_KEY=re_123456789abcdef
+ADMIN_EMAIL=devops@multihopper.io
+PORT=8080

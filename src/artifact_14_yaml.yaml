@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  multihopper-router:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - JITO_RELAYER_URL=https://mainnet.block-engine.jito.wtf/api/v1/bundles
+      - PROGRAM_ID=Hopp3rV111111111111111111111111111111111111
+      - KEYPAIR_PATH=/secrets/id.json
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - AUDIT_EMAIL_RECIPIENT=governance@multihopper.io
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - LOG_LEVEL=info
+    volumes:
+      - ./secrets:/secrets:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

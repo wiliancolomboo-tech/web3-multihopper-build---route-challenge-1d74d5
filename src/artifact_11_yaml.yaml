@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  multihopper-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-engine-node
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - PROGRAM_ID=${PROGRAM_ID:-MHop111111111111111111111111111111111111111}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-audit@multihopper.io}
+      - AUDIT_EMAIL_TO=${AUDIT_EMAIL_TO:-treasury@institutional.com}
+      - OPS_WEBHOOK_URL=${OPS_WEBHOOK_URL}
+      - PRIVATE_KEY_PATH=/etc/secrets/solana-wallet.json
+    volumes:
+      - ./secrets:/etc/secrets:ro
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

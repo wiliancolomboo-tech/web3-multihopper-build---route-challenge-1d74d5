@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  solhop-router-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: solhop_router_daemon
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - MULTI_HOPPER_PROGRAM_ID=HopR2XWk3m5yZz9vD4qJ7wT1cK8vN3bL9sQ6uF2aP5e
+      - DEPLOYER_KEYPAIR_JSON=${DEPLOYER_KEYPAIR_JSON}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"

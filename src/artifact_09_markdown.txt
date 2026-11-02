@@ -1,0 +1,9 @@
+### MultiHopper Production Runbook
+
+#### 1. Real-time Node Health Endpoint
+The MultiHopper automation daemon serves a lightweight telemetry server on `:8080`:
+- `GET /health` -> Returns `200 OK` `{ "status": "nominal", "slot_lag": 1, "mempool_connected": true }`
+- `GET /metrics` -> Returns Prometheus formatted stats on swap volume, realized revenue, and CPI latencies.
+
+#### 2. Emergency Operations (Circuit Breaker)
+If upstream DEX liquidity behaves erratically or a third-party pool suffers a flash-loan drain:

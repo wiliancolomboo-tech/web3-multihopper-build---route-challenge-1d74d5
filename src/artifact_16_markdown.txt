@@ -1,0 +1,20 @@
+1/3
+Thrilled to launch @MultiHopper for the Solana Build & Route Challenge! 🚀
+
+Solana trades face split liquidity across Raydium, Orca, & Meteora. 
+MultiHopper solves this with an atomic, multi-hop aggregation engine + private Jito bundle inclusion to kill sandwich attacks permanently. 🧵👇
+
+2/3
+What makes MultiHopper institutional-grade:
+⚡️ Zero-Loss Invariant: Atomic rollback if min output isn't met across multi-stage legs.
+💰 Programmatic Rev-Share: Automated real-time fee splits between treasuries & integrators.
+📬 Enterprise Ops: Turnkey audit pipeline via @resend and Slack webhooks.
+
+3/3
+Complete open-source submission:
+🔒 100% Rust/Anchor test coverage
+🐳 1-click Docker & Helm deployment
+📦 Production TypeScript CLI client
+
+Check out the repo and run it yourself on Devnet today:
+github.com/multihopper/multihopper-solana #Solana #DeFi #SolanaBounty

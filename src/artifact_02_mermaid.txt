@@ -1,50 +1,52 @@
 flowchart TD
-    subgraph ClientLayer["Client & Ingestion Layer"]
-        User["Institutional Trader / Frontend UI"]
-        CLI["MultiHopper Automation Worker / CLI Engine"]
+    subgraph ClientLayer["Client & Integration Layer"]
+        User["Trader / DApp Client"]
+        CLI["MultiHopper Agent CLI & Orchestrator"]
+        SlackHook["Slack / Discord Enterprise Webhook"]
+        ResendAPI["Resend Email Telemetry API"]
     end
 
-    subgraph OffChainEngine["MultiHopper Off-Chain Route Optimizer"]
-        GraphEngine["DEX Graph Pathfinding Engine (Bellman-Ford / Dijkstra)"]
-        JitoBuilder["Jito MEV Bundle Builder & Tip Injector"]
-        AuditService["Enterprise Webhook & Resend Dispatcher"]
+    subgraph RoutingEngine["Off-Chain Routing & Solver Engine"]
+        PoolCache["In-Memory Pool State Cache (Geyser/RPC)"]
+        GraphSolver["Dijkstra Multi-Hop Path Optimizer"]
+        QuoteGen["Optimal Route & Calldata Generator"]
+        JitoRelay["Jito Block Engine (MEV Protection)"]
     end
 
-    subgraph SolanaRuntime["Solana On-Chain Runtime (MultiHopper Core)"]
-        RouterEntry["Program: multihopper_router"]
-        ConfigState["PDA: Router Global Config & Fee State"]
-        PartnerState["PDA: Partner Revenue Share State"]
-        EscrowVault["PDA: Intermediate Ephemeral Token Vault"]
-        
-        subgraph AMMs["DEX Liquidity Pools (CPI Invocation)"]
-            Orca["Orca Whirlpools / Meteora DLMM"]
-            Raydium["Raydium Concentrated Liquidity"]
-            OpenBook["Phoenix / OpenBook v2"]
-        end
+    subgraph SolanaRuntime["Solana On-Chain Program (multihopper_router)"]
+        ProgramEntry["Program Entry: execute_route"]
+        Hop1["Hop 1: Raydium CP-AMM / CLMM CPI"]
+        Hop2["Hop 2: Orca Whirlpool CPI"]
+        Hop3["Hop 3: Phoenix / OpenBook CPI"]
+        InvariantCheck["Balance Assertion: Output >= min_amount_out"]
+        RevShareSplit["Revenue Share Splitter (Protocol + Referral)"]
     end
 
-    subgraph ExternalTelemetry["Enterprise Reporting & Settlement"]
-        Resend["Resend API: Institutional Execution Receipts"]
-        Slack["Enterprise Slack / Discord Ops Alerts"]
-        JitoBlockEngine["Jito Block Engine (Direct Validator Pipeline)"]
+    subgraph TokenVaults["SPL Token Accounts"]
+        UserATA["User Source / Destination ATA"]
+        TreasuryATA["Protocol Treasury Vault"]
+        ReferralATA["Partner / Referral Vault"]
     end
 
-    User -->|1. Submit Quote Request| CLI
-    CLI -->|2. Compute Optimal Multi-Hop Route| GraphEngine
-    GraphEngine -->|3. Generate Serialized Route Instructions| JitoBuilder
-    JitoBuilder -->|4. Construct Atomic Transaction + Jito Tip| JitoBlockEngine
-    JitoBlockEngine -->|5. Land Transaction at Leader| RouterEntry
+    User -->|1. Request Optimal Swap Quote| CLI
+    CLI -->|2. Query Pool Depth & Tick Arrays| PoolCache
+    PoolCache --> GraphSolver
+    GraphSolver --> QuoteGen
+    QuoteGen -->|3. Route with Max Net Yield| CLI
+    CLI -->|4. Build Tx with Instructions & Tip| JitoRelay
+    JitoRelay -->|5. Atomic Bundle Execution| SolanaRuntime
 
-    RouterEntry -->|6. Validate Config & Pause State| ConfigState
-    RouterEntry -->|7. Deduct Dynamic Partner/Protocol Fee| PartnerState
-    RouterEntry -->|8. Leg 1 Swap CPI| Orca
-    Orca -->|Intermediate Mint A| EscrowVault
-    RouterEntry -->|9. Leg 2 Swap CPI| Raydium
-    Raydium -->|Intermediate Mint B| EscrowVault
-    RouterEntry -->|10. Leg 3 Swap CPI| OpenBook
-    OpenBook -->|11. Final Token Disbursement| User
+    SolanaRuntime --> ProgramEntry
+    ProgramEntry --> Hop1
+    Hop1 -->|Intermediate Token A| Hop2
+    Hop2 -->|Intermediate Token B| Hop3
+    Hop3 --> InvariantCheck
+    InvariantCheck -->|Assertion OK| RevShareSplit
+    RevShareSplit -->|Net Swap Return| UserATA
+    RevShareSplit -->|Protocol Fee BPS| TreasuryATA
+    RevShareSplit -->|Referral BPS| ReferralATA
 
-    RouterEntry -->|12. Emit MultiHopExecutionEvent| CLI
-    CLI -->|13. Push Transaction Digest| AuditService
-    AuditService -->|14. Send Audit Email & Alerts| Resend
-    AuditService -->|15. Webhook Broadcast| Slack
+    InvariantCheck -.->|Slippage Breached: REVERT| User
+
+    CLI -->|6. Async Execution Alert| SlackHook
+    CLI -->|7. Daily Settlement Report| ResendAPI

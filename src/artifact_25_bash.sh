@@ -1,0 +1,1 @@
+anchor run harvest-treasury --provider.cluster mainnet

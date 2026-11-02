@@ -1,67 +1,167 @@
-import { Command } from 'commander';
-import { PublicKey, Keypair } from '@solana/web3.js';
-import { MultiHopperClient } from './router-engine';
-import * as dotenv from 'dotenv';
-import * as fs from 'fs';
+import {
+  Connection,
+  PublicKey,
+  Keypair,
+  TransactionInstruction,
+  AccountMeta,
+  SYSVAR_RENT_PUBKEY,
+  SystemProgram,
+} from "@solana/web3.js";
+import { Program, AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
+import { TelemetryService } from "./telemetry";
 
-dotenv.config();
+export interface HopMetadata {
+  targetDexProgram: PublicKey;
+  writableAccounts: PublicKey[];
+  readonlyAccounts: PublicKey[];
+  signerAccounts?: PublicKey[];
+  instructionData: Buffer;
+}
 
-const program = new Command();
+export interface RouteExecutionParams {
+  sourceMint: PublicKey;
+  destinationMint: PublicKey;
+  amountIn: bigint;
+  minAmountOut: bigint;
+  referralBps: number;
+  referralTokenAccount?: PublicKey;
+  hops: HopMetadata[];
+}
 
-program
-  .name('multihopper-cli')
-  .description('Production MultiHopper Routing and Execution CLI')
-  .version('1.0.0');
+export class MultiHopperClient {
+  public program: Program;
+  public connection: Connection;
+  public wallet: Wallet;
+  private telemetry: TelemetryService;
 
-program
-  .command('route')
-  .description('Execute an atomic multi-hop swap across Raydium & Orca')
-  .requiredOption('-i, --input-mint <address>', 'Source SPL Mint')
-  .requiredOption('-o, --output-mint <address>', 'Destination SPL Mint')
-  .requiredOption('-a, --amount <number>', 'Input amount in base units')
-  .requiredOption('-m, --min-out <number>', 'Minimum output threshold')
-  .option('-p, --partner <address>', 'Partner referral address for rev-share')
-  .option('-k, --keypair <path>', 'Path to Solana private keypair', './keypair.json')
-  .option('-r, --rpc <url>', 'Solana RPC endpoint', process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com')
-  .action(async (options) => {
-    try {
-      const secret = Uint8Array.from(JSON.parse(fs.readFileSync(options.keypair, 'utf-8')));
-      const routerProgramId = new PublicKey(
-        process.env.ROUTER_PROGRAM_ID || 'MHopRouter111111111111111111111111111111111'
-      );
+  constructor(
+    connection: Connection,
+    payerKeypair: Keypair,
+    programId: PublicKey,
+    idl: any,
+    telemetry: TelemetryService
+  ) {
+    this.connection = connection;
+    this.wallet = new Wallet(payerKeypair);
+    const provider = new AnchorProvider(connection, this.wallet, {
+      preflightCommitment: "processed",
+      commitment: "confirmed",
+    });
+    this.program = new Program(idl, programId, provider);
+    this.telemetry = telemetry;
+  }
 
-      const client = new MultiHopperClient(options.rpc, secret, routerProgramId);
+  public static findConfigPda(programId: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync([Buffer.from("router_config")], programId);
+  }
 
-      console.log(`----------------------------------------------------`);
-      console.log(`MultiHopper Routing Dispatcher Initiated`);
-      console.log(`Source: ${options.inputMint} -> Dest: ${options.outputMint}`);
-      console.log(`Amount In: ${options.amount} | Min Out: ${options.minOut}`);
-      console.log(`----------------------------------------------------`);
+  public static findVaultAuthorityPda(programId: PublicKey): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], programId);
+  }
 
-      // Mock composite multi-hop step descriptor for Raydium -> Orca Whirlpool path
-      const sampleHops = [
-        {
-          dexProgramId: new PublicKey('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc'),
-          accounts: [],
-          instructionData: Buffer.from([1, 2, 3]),
-        },
+  public async executeMultiHopSwap(params: RouteExecutionParams): Promise<string> {
+    const startTime = Date.now();
+    const [configPda] = MultiHopperClient.findConfigPda(this.program.programId);
+    const [vaultAuthorityPda] = MultiHopperClient.findVaultAuthorityPda(this.program.programId);
+
+    const userSourceAta = await getAssociatedTokenAddress(
+      params.sourceMint,
+      this.wallet.publicKey
+    );
+    const userDestAta = await getAssociatedTokenAddress(
+      params.destinationMint,
+      this.wallet.publicKey
+    );
+
+    // Intermediate token holding vault PDA ATA
+    const intermediateVaultAta = await getAssociatedTokenAddress(
+      params.destinationMint,
+      vaultAuthorityPda,
+      true
+    );
+
+    // Fetch config state for treasury info
+    const configState = await (this.program.account as any).routerConfig.fetch(configPda);
+    const treasuryDestAta = await getAssociatedTokenAddress(
+      params.destinationMint,
+      configState.treasury,
+      true
+    );
+
+    // Pack remaining accounts & hop structures
+    const remainingAccounts: AccountMeta[] = [];
+    const hopPayloads = [];
+
+    for (const hop of params.hops) {
+      // Index 0 of each hop group is the DEX Program ID itself
+      const currentHopAccounts: AccountMeta[] = [
+        { pubkey: hop.targetDexProgram, isSigner: false, isWritable: false },
       ];
 
-      const partnerKey = options.partner ? new PublicKey(options.partner) : null;
-      const tx = await client.executeAtomicRoute(
-        new PublicKey(options.inputMint),
-        new PublicKey(options.outputMint),
-        BigInt(options.amount),
-        BigInt(options.minOut),
-        partnerKey,
-        sampleHops
-      );
+      const writableFlags: boolean[] = [];
+      const signerFlags: boolean[] = [];
 
-      console.log(`Swap successful! Transaction signature: ${tx}`);
-    } catch (e: any) {
-      console.error(`Route Execution Aborted:`, e.message);
-      process.exit(1);
+      for (const pk of hop.writableAccounts) {
+        currentHopAccounts.push({ pubkey: pk, isSigner: false, isWritable: true });
+        writableFlags.push(true);
+        signerFlags.push(false);
+      }
+
+      for (const pk of hop.readonlyAccounts) {
+        const isSigner = hop.signerAccounts?.some((s) => s.equals(pk)) || false;
+        currentHopAccounts.push({ pubkey: pk, isSigner, isWritable: false });
+        writableFlags.push(false);
+        signerFlags.push(isSigner);
+      }
+
+      remainingAccounts.push(...currentHopAccounts);
+
+      hopPayloads.push({
+        targetDexProgram: hop.targetDexProgram,
+        accountCount: currentHopAccounts.length,
+        writableFlags,
+        signerFlags,
+        instructionData: hop.instructionData,
+      });
     }
-  });
 
-program.parse(process.argv);
+    const tx = await (this.program.methods as any)
+      .executeRoute(
+        new BN(params.amountIn.toString()),
+        new BN(params.minAmountOut.toString()),
+        new BN(params.referralBps.toString()),
+        hopPayloads
+      )
+      .accounts({
+        user: this.wallet.publicKey,
+        config: configPda,
+        vaultAuthority: vaultAuthorityPda,
+        sourceMint: params.sourceMint,
+        destinationMint: params.destinationMint,
+        userSourceToken: userSourceAta,
+        userDestinationToken: userDestAta,
+        routerIntermediateVault: intermediateVaultAta,
+        treasuryTokenAccount: treasuryDestAta,
+        referralTokenAccount: params.referralTokenAccount || null,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .remainingAccounts(remainingAccounts)
+      .rpc({ commitment: "confirmed", skipPreflight: false });
+
+    const latencyMs = Date.now() - startTime;
+
+    await this.telemetry.notifyExecutionSuccess({
+      signature: tx,
+      user: this.wallet.publicKey.toBase58(),
+      route: params.hops.map((h) => h.targetDexProgram.toBase58().substring(0, 6) + "..."),
+      amountIn: params.amountIn.toString(),
+      amountOut: params.minAmountOut.toString(),
+      feeCollected: "Dynamic BPS Vault Split",
+      latencyMs,
+    });
+
+    return tx;
+  }
+}

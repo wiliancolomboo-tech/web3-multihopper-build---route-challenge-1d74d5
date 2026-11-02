@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+  multihopper-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-node
+    restart: always
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - SLACK_OR_DISCORD_WEBHOOK=${SLACK_OR_DISCORD_WEBHOOK}
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

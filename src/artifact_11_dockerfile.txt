@@ -1,22 +1,18 @@
-FROM node:20-slim AS builder
-
-WORKDIR /usr/src/app
-
-COPY client/package*.json ./
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json tsconfig.json ./
 RUN npm ci
-
-COPY client/ ./
+COPY src/ ./src
 RUN npm run build
 
-FROM node:20-slim AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+COPY package*.json ./
+RUN npm ci --only=production
+COPY --from=builder /app/dist ./dist
 
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/package*.json ./
-
+# Non-root secure user
 USER node
 EXPOSE 8080
-
-CMD ["node", "dist/cli.js", "--help"]
+CMD ["node", "dist/cli.js", "route"]

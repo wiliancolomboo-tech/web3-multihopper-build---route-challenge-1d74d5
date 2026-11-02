@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-02-17T03:00:00.000Z",
+  "level": "INFO",
+  "service": "multihopper-engine",
+  "event": "SWAP_ROUTE_DISPATCHED",
+  "data": {
+    "signature": "3u7H...q7k8",
+    "route": ["USDC", "SOL", "BONK"],
+    "latency_ms": 48.2,
+    "gross_out": "49821400",
+    "partner_cut": "4982"
+  }
+}

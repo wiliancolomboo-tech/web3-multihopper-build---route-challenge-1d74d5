@@ -1,0 +1,1 @@
+anchor run pause-router --provider.cluster mainnet

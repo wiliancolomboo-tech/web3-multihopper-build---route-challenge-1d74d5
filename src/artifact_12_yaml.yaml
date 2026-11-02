@@ -1,22 +1,27 @@
 version: '3.8'
 
 services:
-  multihopper-worker:
+  multihopper-routing-worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-engine-worker
-    restart: unless-stopped
+    restart: always
     environment:
       - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - ROUTER_PROGRAM_ID=MHopRouter111111111111111111111111111111111
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - AUDIT_EMAIL_RECIPIENT=treasury-ops@multihopper.fi
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-    volumes:
-      - ./keys/keypair.json:/app/keypair.json:ro
+      - MULTIHOPPER_PROGRAM_ID=HoppER1111111111111111111111111111111111111
+      - PRIVATE_KEY=[1,2,3...255]
+      - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your-enterprise-id
+      - RESEND_API_KEY=re_enterprise_key_987654321
+      - ALERT_EMAIL_RECIPIENT=defi-monitoring@multihopper.fi
+    ports:
+      - "8080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "node -e 'process.exit(0)'"]
-      interval: 30s
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+      interval: 10s
       timeout: 5s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"

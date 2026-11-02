@@ -1,0 +1,7 @@
+SOLANA_RPC_URL=https://api.devnet.solana.com
+PROGRAM_ID=HoppErX111111111111111111111111111111111111
+WALLET_PRIVATE_KEY=[1,2,3,4,...]
+RESEND_API_KEY=re_1234567890abcdef
+NOTIFY_EMAIL_RECIPIENT=treasury@sponsor-domain.com
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxxx/yyyy
+PORT=8080

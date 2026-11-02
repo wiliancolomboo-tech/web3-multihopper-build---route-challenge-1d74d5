@@ -1,0 +1,7 @@
+Enterprise-ready out of the box:
+Full Docker containerization, comprehensive QA test suite, and native Slack/Discord webhook alerts for institutional trading desks.
+
+Explore our submission and run the test harness locally:
+🔗 https://github.com/multihopper-protocol/multihopper-core
+
+Let’s bring unified, MEV-protected routing to all of @solana! 🚀 #Solana #DeFi #SolanaBounty

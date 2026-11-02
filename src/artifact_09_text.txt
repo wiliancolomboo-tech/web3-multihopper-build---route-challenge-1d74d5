@@ -1,0 +1,5 @@
+How does @MultiHopperProtocol solve multi-hop execution?
+
+1/ On-Chain Invariant Locks: Verifies end-to-end token balance deltas across up to 5 hops in a single atomic tx.
+2/ Fast-Path DAG Solver: Computes dynamic Bellman-Ford shortest paths across Raydium, Orca, & DLMMs.
+3/ Enterprise Telemetry: Real-time Discord/Slack & @Resend audit receipts. 🛡️

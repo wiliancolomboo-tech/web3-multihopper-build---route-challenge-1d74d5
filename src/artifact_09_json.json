@@ -1,0 +1,8 @@
+{
+  "status": "HEALTHY",
+  "service": "multihopper-routing-daemon",
+  "connected_cluster": "mainnet-beta",
+  "jito_block_engine": "online",
+  "average_hop_latency_ms": 14.2,
+  "uptime_seconds": 384920
+}

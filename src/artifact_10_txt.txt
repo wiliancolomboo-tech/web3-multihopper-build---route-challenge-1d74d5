@@ -1,0 +1,2 @@
+#### 3. Protocol Revenue Withdrawal
+Revenue-split rewards accumulate directly inside the protocol fee token accounts and bounty token accounts. The sponsor may claim or balance split assets at any time via standard SPL transfer commands.

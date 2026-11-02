@@ -1,0 +1,9 @@
+# MultiHopper Environment Configuration
+SOLANA_RPC_URL=https://api.devnet.solana.com
+PROGRAM_ID=MHopRouter1111111111111111111111111111111111
+ADMIN_KEYPAIR_PATH=/root/.config/solana/id.json
+
+# Enterprise Notification Telemetry
+RESEND_API_KEY=re_123456789abcdefghijklmnopqrstuvw
+SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+COMPLIANCE_EMAIL=trading-desk@multihopper.io

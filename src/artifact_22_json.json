@@ -1,0 +1,9 @@
+{
+  "status": "HEALTHY",
+  "version": "1.0.0",
+  "programId": "MHoP84Z1XF8c5kQz9nU3W7sL3p2vH1rN6mD4eK7yB9q",
+  "rpcLatencyMs": 14,
+  "jitoConnection": "CONNECTED",
+  "resendRelay": "ACTIVE",
+  "lastSettledSlot": 298418293
+}

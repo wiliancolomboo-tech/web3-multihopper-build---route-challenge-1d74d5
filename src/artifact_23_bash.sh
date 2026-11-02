@@ -1,0 +1,1 @@
+spl-token balance --address <TRANSIT_VAULT_ADDRESS>

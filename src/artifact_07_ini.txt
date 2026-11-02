@@ -1,0 +1,7 @@
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SIGNER_SECRET_KEY=[12,34,56,...]
+PARTNER_PUBKEY=4rE2gN3qN9hWdK3Fm3XbM6k8v2q9yP7xY5wB1r9T4Z2k
+SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+RESEND_API_KEY=re_1234567890abcdef
+ALERT_EMAIL=sponsor-ops@multihopper.fi
+PORT=8080

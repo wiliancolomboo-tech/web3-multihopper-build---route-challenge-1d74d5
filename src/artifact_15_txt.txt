@@ -1,0 +1,6 @@
+3/🧵 Built for scale and sustainable protocol monetization:
+Features programmatic partner revenue splits on every single route, with turnkey Docker infrastructure ready for instant cluster deployment.
+
+Repository & full verification suite are live! 🚀
+
+Special thanks to the MultiHopper team for pioneering the next frontier of routing on @Solana.

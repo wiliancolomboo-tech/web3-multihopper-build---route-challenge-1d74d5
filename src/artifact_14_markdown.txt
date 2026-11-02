@@ -1,0 +1,18 @@
+1/7 ⚡ Introducing MultiHopper: The institutional-grade, atomic multi-hop liquidity aggregator & smart-routing protocol engineered natively for @Solana.
+
+No more fragmented swaps, sandwiched hops, or broken fee reconciliation. 
+
+Here's how we engineered the fastest multi-hop engine on Solana 🧵👇
+
+2/7 🧩 The Problem:
+Cross-AMM hops (Raydium -> Orca -> Meteora) suffer from toxic MEV sandwich attacks, high CU footprints, and zero automated revenue sharing for integrators. 
+
+MultiHopper solves this directly inside the Sealevel runtime.
+
+3/7 🛡️ Key Innovations:
+• Programmatic Invariant Guarantees: Output minimums are validated strictly on-chain at the CPI boundary. Any adverse tick slip = atomic rollback.
+• Instant Revenue Sharing: Protocol & partner integrator splits are settled in the same block.
+• Jito MEV protection natively baked in.
+
+Check out our 100% test-passing, open-source codebase ready for turnkey deploy:
+github.com/multihopper/multihopper-core

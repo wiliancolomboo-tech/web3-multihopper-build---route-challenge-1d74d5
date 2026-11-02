@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  multihopper-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multihopper-route-engine
+    restart: always
+    environment:
+      - PORT=8080
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - ROUTER_PROGRAM_ID=HopR7s8TzE3zW1nZq1uM9P4a5S6d7F8g9H0j1K2L3M4
+      - SLACK_WEBHOOK_URL=https://api.example.com/webhooks/alerts/placeholder
+      - DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/XXXXX/YYYYY
+      - RESEND_API_KEY=re_enterprise_key_123456789
+      - ALERT_EMAIL_TO=infra-alerts@multihopper.io
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
