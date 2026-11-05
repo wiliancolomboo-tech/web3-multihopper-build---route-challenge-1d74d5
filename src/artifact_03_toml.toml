@@ -1,13 +1,11 @@
 [toolchain]
-anchor_version = "0.30.1"
-solana_version = "1.18.26"
 
 [features]
-resolution = true
+seeds = true
 skip-lint = false
 
 [programs.localnet]
-multihopper_router = "HopR7s8TzE3zW1nZq1uM9P4a5S6d7F8g9H0j1K2L3M4"
+multi_hopper = "Hopr111111111111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"

@@ -1,23 +1,21 @@
 version: '3.8'
 
 services:
-  multihopper-worker:
+  multihopper-daemon:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: multihopper-engine
-    restart: always
-    environment:
-      - PORT=8080
-      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - OPERATOR_KEYPAIR=[1,2,3...255]
-      - ENTERPRISE_WEBHOOK_URL=https://discord.com/api/webhooks/your-id/your-token
-      - RESEND_API_KEY=re_your_real_resend_api_key
-      - AUDIT_EMAIL=treasury@yourfirm.com
+    restart: unless-stopped
     ports:
       - "8080:8080"
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - OPERATIONAL_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+      - RESEND_API_KEY=re_test_000000000000000000000000
+      - OPERATIONS_EMAIL=ops@multihopper.fi
     logging:
       driver: "json-file"
       options:
-        max-size: "100m"
+        max-size: "50m"
         max-file: "5"

@@ -1,26 +1,19 @@
 FROM node:20-alpine AS builder
-
-WORKDIR /usr/src/app
-
-COPY package*.json tsconfig.json ./
-RUN npm ci
-
+WORKDIR /app
+COPY package.json tsconfig.json ./
+RUN npm install --frozen-lockfile
 COPY src ./src
-COPY target/idl ./target/idl
 RUN npm run build
 
-FROM node:20-alpine
-
-WORKDIR /usr/src/app
+FROM node:20-alpine AS runner
+WORKDIR /app
 ENV NODE_ENV=production
+COPY package.json ./
+RUN npm install --only=production
+COPY --from=builder /app/dist ./dist
 
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/target ./target
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
 
 EXPOSE 8080
-USER node
-
-CMD ["node", "dist/worker.js"]
+CMD ["node", "dist/server.js"]

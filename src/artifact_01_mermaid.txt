@@ -1,32 +1,30 @@
 flowchart TD
-    subgraph ClientLayer["Enterprise Integrator & User Layer"]
-        User["End Trader / Web3 App"] -->|1. Request Optimal Swap Route| ClientCLI["MultiHopper Routing Client / SDK"]
-        ClientCLI -->|2. Path Query| RouteEngine["MultiHopper Graph Routing Daemon"]
+    subgraph ClientLayer ["Client & Routing Layer"]
+        User(["Trader / Institutional Agent"]) -->|"1. Request Route (Input, Output, Amount)"| Engine["MultiHopper Routing Daemon"]
+        Engine -->|"2. Graph Traversal & Best-Path Discovery"| Pools[("Solana DEX Pools\n(Raydium / Orca / Meteora)")]
+        Engine -->|"3. Build Optimal Tx + Priority Fees"| TxBuilder["Tx Assembly & Slippage Guard"]
     end
 
-    subgraph OffChainEngine["MultiHopper Off-Chain Core"]
-        RouteEngine -->|Fetch Pool Reserves & Bins| SolanaRPC["Solana Geyser / High-Speed RPC"]
-        RouteEngine -->|Graph Traversal Dijkstra/Yen's| PathFinder["Optimal Multi-Hop Arbitrage & Swap Engine"]
-        PathFinder -->|Compute Fees & Dynamic Split| FeeModel["RevShare Matrix (Integrator / Protocol)"]
-        FeeModel -->|Assemble Atomic Tx| TxBuilder["Solana Tx Assembler"]
-        TxBuilder -->|Send Bundle| JitoMEV["Jito Block Engine (MEV Protection)"]
+    subgraph SolanaBlockchain ["Solana On-Chain Settlement (Anchor Program)"]
+        TxBuilder -->|"4. Execute Atomic Route Instruction"| Program["MultiHopper Program (multi_hopper)"]
+        
+        Program -->|"5. Transfer In"| UserVault["User Source Vault"]
+        UserVault -->|"6. Hop 1: Token A -> Token B"| Hop1Pool["Pool 1 (e.g., Orca Whirlpool)"]
+        Hop1Pool -->|"7. Hop 2: Token B -> Token C"| Hop2Pool["Pool 2 (e.g., Raydium CLMM)"]
+        Hop2Pool -->|"8. Hop 3: Token C -> Token D"| Hop3Pool["Pool 3 (e.g., Meteora DLMM)"]
+        
+        Hop3Pool -->|"9. Minimum Output & Slippage Check"| SlippageGuard{"Actual Out >= Min Out?"}
+        SlippageGuard -- "No" --> Revert["Deterministic Error: SlippageExceeded (Revert)"]
+        SlippageGuard -- "Yes" --> FeeSplit["10. Split Protocol & Partner Revenue"]
+        
+        FeeSplit -->|"Protocol Fee %"| TreasuryPDA["Treasury Vault"]
+        FeeSplit -->|"Partner Fee %"| ReferrerPDA["Referrer Vault"]
+        FeeSplit -->|"Net Balance"| UserDest["User Destination ATA"]
     end
 
-    subgraph OnChainProtocol["Solana On-Chain MultiHopper Program"]
-        JitoMEV -->|Execute Atomic Tx| RouterEntry["multi_hopper::swap_exact_tokens_for_tokens"]
-        RouterEntry -->|Validate Authority & Constraints| Guard["Invariants & Slippage Guard"]
-        Guard -->|Hop 1 CPI| Pool1["DEX Pool 1 (Raydium CPMM)"]
-        Pool1 -->|Hop 2 CPI| Pool2["DEX Pool 2 (Orca Whirlpool)"]
-        Pool2 -->|Hop 3 CPI| Pool3["DEX Pool 3 (Meteora DLMM)"]
-        Pool3 -->|Verify Invariant Min Out| InvariantCheck["Out Amount >= min_amount_out"]
-        InvariantCheck -->|Distribute Revenue Share| RevShareModule["Atomic Fee Splitter PDA"]
-        RevShareModule -->|Transfer Cut| IntegratorVault["Integrator Token Account"]
-        RevShareModule -->|Transfer Cut| ProtocolTreasury["MultiHopper DAO Treasury"]
-        RevShareModule -->|Transfer Remainder| UserATA["User Output Token Account"]
-    end
-
-    subgraph TelemetryLayer["Enterprise Notification & Audit"]
-        RouterEntry -.->|Program Logs & Events| LogMonitor["Log Telemetry Listener"]
-        LogMonitor -->|Swap Executed Webhook| SlackDiscord["Slack / Discord Webhook Alert"]
-        LogMonitor -->|Settlement Digest Email| ResendAPI["Resend Enterprise Email Service"]
+    subgraph ObservabilityLayer ["Enterprise Integration & Telemetry"]
+        Program -->|"11. Emit On-Chain Trade Event"| SolanaRPC["Solana Geyser / RPC Node"]
+        SolanaRPC -->|"12. Stream Logs"| WebhookRelay["Enterprise Webhook Relay"]
+        WebhookRelay -->|"13. Post JSON Payload"| SlackDiscord["Slack / Discord SecOps Channel"]
+        WebhookRelay -->|"14. Dispatch Email Receipt"| ResendAPI["Resend Enterprise API"]
     end

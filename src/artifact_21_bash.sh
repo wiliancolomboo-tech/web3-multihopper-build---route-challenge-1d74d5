@@ -1,1 +1,2 @@
-npx ts-node src/admin.ts emergency-pause --network mainnet
+yarn install
+anchor test

@@ -1,0 +1,9 @@
+# HELP multihopper_settled_swaps_total Total multi-hop swaps executed
+  # TYPE multihopper_settled_swaps_total counter
+  multihopper_settled_swaps_total 1420
+  # HELP multihopper_execution_latency_ms Routing latency in milliseconds
+  # TYPE multihopper_execution_latency_ms gauge
+  multihopper_execution_latency_ms 384
+  # HELP multihopper_protocol_fees_accrued_usd Cumulative accrued fee revenue
+  # TYPE multihopper_protocol_fees_accrued_usd counter
+  multihopper_protocol_fees_accrued_usd 4892.42

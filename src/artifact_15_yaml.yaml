@@ -1,25 +1,24 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  multihopper-daemon:
+  multihopper-worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-engine
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
+    restart: always
     environment:
       - NODE_ENV=production
-      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - ALERT_EMAIL_RECIPIENT=${ALERT_EMAIL_RECIPIENT}
-      - ANCHOR_WALLET=/secrets/id.json
-    volumes:
-      - ./secrets/id.json:/secrets/id.json:ro
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - SIGNER_SECRET_KEY=${SIGNER_SECRET_KEY}
+      - ROUTER_PROGRAM_ID=MHopRouter1111111111111111111111111111111111
+      - ENTERPRISE_WEBHOOK_URL=${ENTERPRISE_WEBHOOK_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'console.log(\"healthy\")' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     logging:
       driver: "json-file"
       options:
-        max-size: "50m"
+        max-size: "20m"
         max-file: "5"

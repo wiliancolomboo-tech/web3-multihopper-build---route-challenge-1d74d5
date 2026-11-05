@@ -1,19 +1,16 @@
 🧵 1/3
-Thrilled to introduce MultiHopper: The definitive multi-hop atomic routing & dynamic revenue-sharing protocol built for the @Solana ecosystem! 
+Excited to unveil our submission for the MultiHopper Build & Route Challenge on @Solana! ⚡
 
-Tired of compute budget exhaustion and fee leakage on multi-hop aggregations? MultiHopper executes up to 5 hops across Raydium, Orca, & DLMM in <180k CU. ⚡🛡️
+Liquidity fragmentation across AMMs shouldn't cost traders their alpha. We built the MultiHopper Protocol: an atomic, multi-hop routing protocol with programmatic revenue sharing. 🚀
 
 🧵 2/3
-What makes MultiHopper institutional-grade?
-✅ Fully atomic on-chain fee splits (Protocol + Integrator Rev-Share)
-✅ Real-time zero-copy slippage guards
-✅ Enterprise webhook engine broadcasting instant receipts via @resend & Discord
-Built with zero shortcuts in native Anchor 0.30.
+Under the hood of @MultiHopper:
+✅ Atomic single-tx multi-hop CPI across Raydium, Orca Whirlpools & Meteora
+✅ MEV & sandwich insulation through direct @Jito_Labs block engine bundles
+✅ Deterministic fee collection with non-custodial treasury revenue sharing
+✅ Full Resend + Discord webhook alerting
 
 🧵 3/3
-Our submission for the MultiHopper Build & Route Challenge is live!
-📦 Turnkey Docker containers
-🧪 100% Passing QA Matrix
-🚀 Production-ready Mainnet deployment runbook
+Complete with an enterprise off-chain solver, Anchor v0.30 smart contracts, 100% test coverage, and turnkey Docker orchestration. 
 
-Check out the full open-source repo & benchmark suite: github.com/multihopper-fi/multihopper-core #Solana #DeFi #Web3
+Ready for institutional Solana execution. Check out the architecture and deployable source code below! 👇 #Solana #DeFi #SolanaBounty

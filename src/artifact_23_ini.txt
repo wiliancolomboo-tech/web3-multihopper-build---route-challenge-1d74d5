@@ -1,5 +1,5 @@
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 ROUTER_PROGRAM_ID=HopRouter1111111111111111111111111111111111
 SOLVER_PRIVATE_KEY=[1,2,3...255]
-NOTIFICATION_WEBHOOK_URL=https://discord.com/api/webhooks/your-enterprise-channel-id/token
+NOTIFICATION_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
 METRICS_PORT=9100

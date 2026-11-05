@@ -1,2 +1,10 @@
-#### 3. Protocol Revenue Withdrawal
-Revenue-split rewards accumulate directly inside the protocol fee token accounts and bounty token accounts. The sponsor may claim or balance split assets at any time via standard SPL transfer commands.
++--------------------------------------------------------------------------------------------------+
+|                                    INCIDENT RESPONSE RUNBOOK                                     |
++---------------------+-------------------------------------+--------------------------------------+
+| Symptom             | Root Cause                          | Automated Remediation Action         |
++---------------------+-------------------------------------+--------------------------------------+
+| RPC Latency > 800ms | Primary RPC congestion / slot drift | Failover quorum switches to backup   |
+| High Slippage Error | Flash volatility in target pool     | Engine increases min tick tolerance  |
+| Resend Rate Limit   | Bulk settlement batch overflow      | In-memory queue delays with backoff  |
+| Insufficient Rent   | New escrow vault initialization     | Top up router vault with 0.05 SOL    |
++---------------------+-------------------------------------+--------------------------------------+

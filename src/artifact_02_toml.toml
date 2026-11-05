@@ -1,12 +1,12 @@
 [package]
-name = "multihopper-router"
+name = "multi_hopper"
 version = "0.1.0"
-description = "Solana MultiHopper Atomic Routing Engine"
+description = "Institutional Multi-Hop Atomic Router on Solana"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "multihopper_router"
+name = "multi_hopper"
 
 [features]
 no-entrypoint = []
@@ -16,5 +16,6 @@ cpi = ["no-entrypoint"]
 default = []
 
 [dependencies]
-anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
-anchor-spl = { version = "0.30.1", features = ["token"] }
+anchor-lang = { version = "0.29.0", features = ["init-if-needed"] }
+anchor-spl = { version = "0.29.0", features = ["token"] }
+solana-program = "=1.17.17"

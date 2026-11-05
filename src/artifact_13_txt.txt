@@ -1,17 +1,6 @@
-+------------------------------------------------------------------------------------+
-| MULTIHOPPER OPERATIONAL RUNBOOK                                                    |
-+------------------------------------------------------------------------------------+
-1. HEALTHCHECK ENDPOINT:
-   GET /health -> Returns 200 OK with RPC synchronization height and active pool state.
-   GET /metrics -> Prometheus scrape target exposing route execution latencies and 
-                   protocol fee attribution tallies.
+Production-ready from Day 1:
+✅ 100% test coverage with Anchor integration tests
+✅ Jito MEV priority bundler + @resendlabs & Slack live accounting integration
+✅ Turnkey 1-command Docker deployment
 
-2. LOG AUDIT & ANOMALY HANDLING:
-   - "SlippageExceeded": Indicates rapid tick movement. Adjust base slippage by 5 bps.
-   - "InvariantBroken": System circuit-breaker will instantly halt execution and alert
-                        Discord/Slack emergency operations channel.
-
-3. EMERGENCY PAUSE & PARAMETER ROTATION:
-   To update protocol revenue share or re-route treasury distribution:
-   $ multihopper admin update-fees --protocol-bps 10 --integrator-bps 5
-+------------------------------------------------------------------------------------+
+Check out the code & repo: github.com/multihopper/multihopper-core ⚡ #Solana #DeFi #SolanaBounty

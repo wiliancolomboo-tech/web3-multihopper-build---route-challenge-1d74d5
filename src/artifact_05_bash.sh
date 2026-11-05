@@ -1,16 +1,18 @@
-# 1. Clone & Setup Workspace
-git clone https://github.com/multihopper-protocol/multihopper-core.git
-cd multihopper-core
-
-# 2. Build Anchor Program
+# 1. Install dependencies and compile Solana programs
 anchor build
 
-# 3. Synchronize Program ID
-anchor keys sync
+# 2. Sync keys and verify PDA program addresses
+solana address -k target/deploy/multihopper-keypair.json
 
-# 4. Deploy to Solana Devnet / Mainnet
-anchor deploy --provider.cluster https://api.devnet.solana.com --program-keypair ./target/deploy/multi_hopper-keypair.json
+# 3. Deploy to Solana Devnet / Mainnet
+solana program deploy \
+  --program-id target/deploy/multihopper-keypair.json \
+  target/deploy/multihopper.so \
+  --url https://api.mainnet-beta.solana.com \
+  --keypair ~/.config/solana/id.json
 
-# 5. Initialize Protocol On-Chain Configuration
-npm install
-npx ts-node cli/admin_init.ts --cluster devnet --fee-bps 30 --default-integrator-share 5000
+# 4. Initialize Program Configuration
+npx ts-node cli/init-router.ts \
+  --fee-bps 100 \
+  --rev-share-bps 3000 \
+  --treasury <TREASURY_PUBKEY>

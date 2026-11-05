@@ -1,7 +1,8 @@
 {
-  "status": "UP",
-  "programId": "MHopRouteR1111111111111111111111111111111111",
-  "rpcLatencyMs": 14,
-  "mempoolSyncSlot": 298412894,
-  "activePoolTrackers": 184
+  "status": "healthy",
+  "programId": "MHoP84sQhT4r6x7vK1Y9N4D9uC1kZbQvA4gR4R5pPump",
+  "connectedRpc": "https://api.mainnet-beta.solana.com",
+  "poolsMonitored": 1420,
+  "averageHopLatencyMs": 3.8,
+  "uptimeSeconds": 86420
 }

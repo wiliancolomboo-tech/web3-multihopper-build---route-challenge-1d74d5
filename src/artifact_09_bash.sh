@@ -1,5 +1,12 @@
-# Launch multi-hop optimizer and telemetry pipeline
-docker-compose up -d --build
+# 1. Build Solana Anchor Program
+anchor build
 
-# Verify health endpoint
-curl -i http://localhost:8080/healthz
+# 2. Sync Program Keys
+solana address -k target/deploy/multihopper_router-keypair.json
+anchor keys sync
+
+# 3. Deploy to Solana Devnet / Mainnet
+solana program deploy \
+  --program-id target/deploy/multihopper_router-keypair.json \
+  target/deploy/multihopper_router.so \
+  --url-url https://api.mainnet-beta.solana.com

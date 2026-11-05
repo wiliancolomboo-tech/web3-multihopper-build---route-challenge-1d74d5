@@ -1,28 +1,17 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  multihopper-worker:
+  multihopper-sentinel:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-worker
-    restart: always
+    container_name: multihopper-sentinel
+    restart: unless-stopped
     environment:
-      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      - DISCORD_SLACK_WEBHOOK_URL=${DISCORD_SLACK_WEBHOOK_URL}
       - RESEND_API_KEY=${RESEND_API_KEY}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - NOTIFICATION_EMAIL=${NOTIFICATION_EMAIL}
-      - PORT=8080
-    ports:
-      - "8080:8080"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "50m"
-        max-file: "5"
+      - RESEND_RECIPIENT_EMAIL=${RESEND_RECIPIENT_EMAIL}
+    volumes:
+      - ./keys:/usr/src/app/keys:ro
+    command: ["execute", "-k", "/usr/src/app/keys/id.json", "-i", "So11111111111111111111111111111111111111112", "-o", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "-a", "1000000000", "-m", "150000000"]

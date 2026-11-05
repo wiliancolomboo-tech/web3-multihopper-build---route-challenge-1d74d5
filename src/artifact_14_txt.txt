@@ -1,10 +1,19 @@
-+-----------------------------------------------------------------------------------------+
-|                                OPERATIONAL HEALTH MATRIX                                |
-+-----------------------+-----------------------------+-----------------------------------+
-| Metric                | Target                      | Alert Threshold                   |
-+-----------------------+-----------------------------+-----------------------------------+
-| Solver Latency        | < 12ms                      | > 45ms (Re-index AMM pools)       |
-| Swap Failure Rate     | < 0.05%                     | > 1.0% (Check slippage tolerance) |
-| Compute Unit Burn     | 185,000 CUs (3 Hops)        | > 350,000 CUs                     |
-| Partner Share Accrual | Real-time on-chain split    | Daily audit reconciliation        |
-+-----------------------+-----------------------------+-----------------------------------+
+================================================================================
+                    MULTIHOPPER ENTERPRISE RUNBOOK
+================================================================================
+
+1. INCIDENT MANAGEMENT: HIGH FAILURE RATE / REVERT SPIKE
+   - Symptoms: Slack alert triggers "MultiHop Revert Rate > 2%".
+   - Triage: Check priority fees in client/multihopper-agent.ts.
+     Execute: curl -s http://localhost:8080/metrics | grep revert_ratio
+   - Mitigation: Increase microLamports in compute budget instruction:
+     setComputeUnitPrice({ microLamports: 250_000 });
+
+2. RESYNCING LOCAL ORDERBOOKS
+   - Restart daemon container:
+     docker-compose restart multihopper-node
+
+3. REVENUE EXTRACTION AUDIT
+   - Query accumulated protocol PDA fees:
+     solana account <TREASURY_PDA_PUBKEY> --output json
+================================================================================

@@ -1,6 +1,11 @@
-2/ Why MultiHopper dominates:
-⚡ Atomic Cross-AMM Execution: Raydium -> Orca -> Meteora in 1 Tx
-🛡️ Terminal Slippage Checks: Instant deterministic revert on route leakage
-💰 Built-in Rev-Share: 80% split to route integrators settled on-chain via SPL PDAs
-
-Zero reentrancy risk. 0.35% realized slippage.
+Operational Status & Metrics Check
+Endpoint: GET /health
+Response:
+{
+  "status": "healthy",
+  "programId": "Hopp3rV111111111111111111111111111111111111",
+  "circuitBreaker": "active",
+  "lastSlotProcessed": 289410291,
+  "rpcLatencyMs": 14,
+  "bundleSuccessRate": "99.85%"
+}

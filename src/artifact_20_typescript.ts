@@ -1,22 +1,35 @@
-import http from "http";
+import express, { Request, Response } from 'express';
+import { logger } from './logger';
 
-export function startHealthServer(port: number = 8080) {
-  const server = http.createServer((req, res) => {
-    if (req.url === "/health") {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({
-        status: "HEALTHY",
-        uptimeSec: process.uptime(),
-        memoryUsage: process.memoryUsage(),
-        timestamp: new Date().toISOString()
-      }));
-    } else {
-      res.writeHead(404);
-      res.end();
-    }
-  });
+const app = express();
+const PORT = process.env.PORT || 8080;
 
-  server.listen(port, () => {
-    console.log(`[HealthCheck] Healthcheck server live on port ${port}`);
-  });
-}
+let isHealthy = true;
+let totalSwapsRouted = 0;
+let totalVolumeBaseUnits = BigInt(0);
+
+app.use(express.json());
+
+app.get('/healthz', (req: Request, res: Response) => {
+  if (isHealthy) {
+    return res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+  }
+  return res.status(503).json({ status: 'DOWN' });
+});
+
+app.get('/metrics', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/plain');
+  res.send(`
+# HELP multihopper_swaps_total Total number of swaps routed
+# TYPE multihopper_swaps_total counter
+multihopper_swaps_total ${totalSwapsRouted}
+
+# HELP multihopper_volume_total Total volume routed in base units
+# TYPE multihopper_volume_total counter
+multihopper_volume_total ${totalVolumeBaseUnits.toString()}
+  `);
+});
+
+app.listen(PORT, () => {
+  logger.info(`MultiHopper Telemetry & Router Server running on port ${PORT}`);
+});

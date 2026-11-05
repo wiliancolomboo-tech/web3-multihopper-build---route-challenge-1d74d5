@@ -1,7 +1,7 @@
 SOLANA_RPC_URL="https://api.mainnet-beta.solana.com"
 ROUTER_PROGRAM_ID="Hop1111111111111111111111111111111111111111"
 AUTHORITY_KEYPAIR_JSON="[1,2,3,...]"
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/your/webhook/url"
+DISCORD_WEBHOOK_URL="https://example.com/webhook/discord-placeholder"
 RESEND_API_KEY="re_123456789abcdef"
 NOTIFICATION_EMAIL="engineering-leads@multihopper.io"
 PORT=8080

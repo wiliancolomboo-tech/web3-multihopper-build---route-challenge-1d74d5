@@ -1,1 +1,3 @@
-yarn ts-node scripts/admin-controls.ts --pause true
+solana program deploy \
+  --program-id target/deploy/multihopper_router-keypair.json \
+  target/deploy/multihopper_router.so

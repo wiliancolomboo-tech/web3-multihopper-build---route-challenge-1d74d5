@@ -1,9 +1,8 @@
-┌────────────────────────────────────────────────────────┐
-       │             MultiHopper Routing Protocol               │
-       └────────────────────────────────────────────────────────┘
-                 │                                    │
-    [Off-Chain Route Solver]              [On-Chain Settlement Engine]
-   • Raydium CP-AMM & CLMM               • Atomic CPI Hop Orchestrator
-   • Orca Whirlpools                     • Strict Slippage Invariant Verification
-   • Phoenix CLOB                        • Protocol Fee & RevShare Split Vault
-   • Dynamic A* Graph Engine             • Non-custodial User Settlement
+[ MULTIHOPPER PROTOCOL ]
+                                              │
+         ┌────────────────────────────────────┼────────────────────────────────────┐
+         ▼                                    ▼                                    ▼
+[ Atomic CPI Route Engine ]        [ On-Chain Revenue Engine ]         [ Enterprise Observability ]
+ - Up to 4 Intermediate Hops        - Programmatic Partner Splits       - Zero-Copy Event Streaming
+ - Deterministic Slippage Guards    - Direct Treasury Accrual           - Discord/Slack Real-Time Webhooks
+ - Zero-Intermediate Balances       - Non-Custodial Claim Vaults        - Resend Institutional Receipts

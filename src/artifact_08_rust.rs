@@ -1,39 +1,43 @@
 use anchor_lang::prelude::*;
-use crate::state::ProtocolConfig;
+use crate::state::GlobalConfig;
 use crate::errors::MultiHopperError;
 
 #[derive(Accounts)]
-pub struct InitializeProtocol<'info> {
+pub struct Initialize<'info> {
     #[account(
         init,
         payer = admin,
-        space = ProtocolConfig::LEN,
-        seeds = [b"multi_hopper_config"],
+        space = GlobalConfig::LEN,
+        seeds = [b"global-config"],
         bump
     )]
-    pub config: Account<'info, ProtocolConfig>,
+    pub config: Account<'info, GlobalConfig>,
 
     #[account(mut)]
     pub admin: Signer<'info>,
 
-    /// CHECK: Safe treasury/fee recipient account
-    pub fee_recipient: AccountInfo<'info>,
+    /// CHECK: Protocol treasury address that receives fees
+    pub treasury: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeProtocol>, fee_bps: u16) -> Result<()> {
-    require!(fee_bps <= 500, MultiHopperError::MathOverflow); // Max 5% protocol fee safeguard
+pub fn handler(
+    ctx: Context<Initialize>,
+    base_fee_bps: u16,
+    partner_share_bps: u16,
+) -> Result<()> {
+    require!(base_fee_bps <= 500, MultiHopperError::FeeTooHigh);
+    require!(partner_share_bps <= 10_000, MultiHopperError::InvalidRevShareSplit);
 
     let config = &mut ctx.accounts.config;
     config.admin = ctx.accounts.admin.key();
-    config.fee_recipient = ctx.accounts.fee_recipient.key();
-    config.fee_bps = fee_bps;
+    config.treasury = ctx.accounts.treasury.key();
+    config.base_fee_bps = base_fee_bps;
+    config.partner_share_bps = partner_share_bps;
     config.is_paused = false;
-    config.total_volume_swapped = 0;
-    config.total_hops_executed = 0;
     config.bump = ctx.bumps.config;
 
-    msg!("MultiHopper Engine Initialized. Admin: {}", config.admin);
+    msg!("MultiHopper Global Configuration initialized successfully.");
     Ok(())
 }

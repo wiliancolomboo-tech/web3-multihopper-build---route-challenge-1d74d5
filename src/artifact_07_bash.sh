@@ -1,13 +1,16 @@
-# 1. Install prerequisites and Anchor 0.30.1
-solana-install init 1.18.26
-cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.1 anchor-cli --locked
+# 1. Clone repository and install dependencies
+git clone https://github.com/sponsor-org/multihopper-router.git
+cd multihopper-router
+npm install
 
-# 2. Build deterministic on-chain binaries
-anchor build --verifiable
+# 2. Build Anchor Smart Program
+anchor build
 
-# 3. Synchronize keys and deploy to Devnet/Mainnet
-solana program deploy \
-  --program-id target/deploy/multihopper-keypair.json \
-  target/deploy/multihopper.so \
-  --url https://api.mainnet-beta.solana.com \
-  --keypair ~/.config/solana/mainnet-authority.json
+# 3. Synchronize program ID across source files
+anchor keys sync
+
+# 4. Deploy to Solana Devnet or Mainnet-Beta
+anchor deploy --provider.cluster devnet --program-keypair target/deploy/multihopper_router-keypair.json
+
+# 5. Initialize Protocol Global State
+ts-node scripts/initialize_protocol.ts --cluster devnet --fee-bps 10

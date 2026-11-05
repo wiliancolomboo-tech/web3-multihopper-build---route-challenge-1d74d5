@@ -1,7 +1,16 @@
-SOLANA_RPC_URL=https://api.devnet.solana.com
-PROGRAM_ID=HoppErX111111111111111111111111111111111111
-WALLET_PRIVATE_KEY=[1,2,3,4,...]
-RESEND_API_KEY=re_1234567890abcdef
-NOTIFY_EMAIL_RECIPIENT=treasury@sponsor-domain.com
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/xxxx/yyyy
+# Solana RPC Endpoints
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+SOLANA_BACKUP_RPC_URL=https://solana-mainnet.g.alchemy.com/v2/YOUR-KEY
+
+# On-Chain Deployments
+PROGRAM_ID=MHoP7GZwE1xV9uRj3Qc4F6g2D8wA5pB1sT9kY8nM4jR
+KEYPAIR_PATH=./secrets/wallet.json
+
+# Enterprise Telemetry & Notification Matrix
+RESEND_API_KEY=re_123456789_abcdefghijklmnopqrstuvwxyz
+ALERT_EMAIL_RECIPIENT=dev-ops@multihopper.fi
+SLACK_WEBHOOK_URL=https://example.com/webhook/slack-placeholder
+
+# Operational Runtime
 PORT=8080
+LOG_LEVEL=info

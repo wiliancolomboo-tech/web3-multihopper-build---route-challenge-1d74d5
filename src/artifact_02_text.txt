@@ -1,12 +1,10 @@
-programs/multihopper/
+programs/multihopper_router/
 ├── Cargo.toml
 └── src/
     ├── errors.rs
     ├── instructions/
+    │   ├── execute_hop.rs
     │   ├── initialize.rs
-    │   ├── mod.rs
-    │   └── route_swap.rs
-    ├── state/
-    │   ├── config.rs
     │   └── mod.rs
-    └── lib.rs
+    ├── lib.rs
+    └── state.rs

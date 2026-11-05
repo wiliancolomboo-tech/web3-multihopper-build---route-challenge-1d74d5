@@ -1,5 +1,5 @@
 SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
 WALLET_PATH=./secrets/id.json
 RESEND_API_KEY=re_9xK8...
-ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/...
+ALERT_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
 REPORT_RECIPIENT_EMAIL=ops@sponsor.com

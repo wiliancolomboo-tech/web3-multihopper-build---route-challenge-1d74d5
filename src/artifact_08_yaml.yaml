@@ -1,24 +1,25 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  solhop-router-agent:
+  multihopper-routing-node:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: solhop_router_daemon
+    container_name: multihopper-routing-daemon
     restart: always
     environment:
-      - NODE_ENV=production
       - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - MULTI_HOPPER_PROGRAM_ID=HopR2XWk3m5yZz9vD4qJ7wT1cK8vN3bL9sQ6uF2aP5e
-      - DEPLOYER_KEYPAIR_JSON=${DEPLOYER_KEYPAIR_JSON}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
-      - PORT=8080
+      - SOLANA_WS_URL=wss://api.mainnet-beta.solana.com
+      - KEYPAIR_PATH=/secrets/operator-keypair.json
+      - SLACK_WEBHOOK_URL=https://example.com/webhook/slack-placeholder
+      - RESEND_API_KEY=re_your_enterprise_api_key
+      - METRICS_PORT=8080
+    volumes:
+      - ./secrets:/secrets:ro
     ports:
       - "8080:8080"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "100m"
-        max-file: "5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

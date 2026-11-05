@@ -1,472 +1,334 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("HopR2XWk3m5yZz9vD4qJ7wT1cK8vN3bL9sQ6uF2aP5e");
-
-pub const FEE_DENOMINATOR: u64 = 10_000;
-pub const MAX_FEE_BPS: u64 = 100; // 1% absolute ceiling
+declare_id!("MHopR11111111111111111111111111111111111111");
 
 #[program]
 pub mod multihopper {
     use super::*;
 
-    /// Initializes protocol state, fee vault, and revenue-sharing parameters
     pub fn initialize_protocol(
         ctx: Context<InitializeProtocol>,
-        fee_bps: u64,
-        platform_fee_share_bps: u64,
+        protocol_fee_bps: u16,
     ) -> Result<()> {
-        require!(fee_bps <= MAX_FEE_BPS, MultiHopperError::FeeBpsExceedsMaximum);
-        require!(
-            platform_fee_share_bps <= FEE_DENOMINATOR,
-            MultiHopperError::InvalidShareSplit
-        );
-
-        let config = &mut ctx.accounts.protocol_config;
+        require!(protocol_fee_bps <= 100, MultiHopperError::FeeTooHigh);
+        let config = &mut ctx.accounts.config;
         config.admin = ctx.accounts.admin.key();
-        config.fee_collector = ctx.accounts.fee_collector.key();
-        config.fee_bps = fee_bps;
-        config.platform_fee_share_bps = platform_fee_share_bps;
-        config.total_swaps = 0;
+        config.fee_treasury = ctx.accounts.fee_treasury.key();
+        config.protocol_fee_bps = protocol_fee_bps;
         config.total_volume_usd = 0;
-        config.bump = ctx.bumps.protocol_config;
-
-        emit!(ProtocolInitializedEvent {
+        config.total_swaps = 0;
+        config.bump = ctx.bumps.config;
+        
+        emit!(ProtocolInitialized {
             admin: config.admin,
-            fee_collector: config.fee_collector,
-            fee_bps,
-            platform_fee_share_bps,
+            fee_treasury: config.fee_treasury,
+            fee_bps: protocol_fee_bps,
         });
-
         Ok(())
     }
 
-    /// Update configuration settings (Admin Only)
-    pub fn update_config(
-        ctx: Context<UpdateConfig>,
-        new_fee_bps: Option<u64>,
-        new_platform_fee_share_bps: Option<u64>,
-        new_fee_collector: Option<Pubkey>,
-    ) -> Result<()> {
-        let config = &mut ctx.accounts.protocol_config;
-
-        if let Some(fee) = new_fee_bps {
-            require!(fee <= MAX_FEE_BPS, MultiHopperError::FeeBpsExceedsMaximum);
-            config.fee_bps = fee;
-        }
-        if let Some(share) = new_platform_fee_share_bps {
-            require!(share <= FEE_DENOMINATOR, MultiHopperError::InvalidShareSplit);
-            config.platform_fee_share_bps = share;
-        }
-        if let Some(collector) = new_fee_collector {
-            config.fee_collector = collector;
-        }
-
-        emit!(ConfigUpdatedEvent {
-            admin: config.admin,
-            fee_bps: config.fee_bps,
-            platform_fee_share_bps: config.platform_fee_share_bps,
-            fee_collector: config.fee_collector,
-        });
-
-        Ok(())
-    }
-
-    /// Executes an atomic 2-Hop trade with strictly enforced minimum output & revenue share
-    pub fn execute_two_hop_route<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteTwoHop<'info>>,
+    pub fn execute_multi_hop<'a, 'b, 'c, 'info>(
+        ctx: Context<'a, 'b, 'c, 'info, ExecuteMultiHop<'info>>,
         amount_in: u64,
         minimum_amount_out: u64,
-        hop1_min_intermediate: u64,
+        hop_instructions: Vec<HopInstruction>,
     ) -> Result<()> {
-        require!(amount_in > 0, MultiHopperError::ZeroAmountIn);
-        require!(minimum_amount_out > 0, MultiHopperError::ZeroMinimumAmountOut);
+        require!(amount_in > 0, MultiHopperError::InvalidInputAmount);
+        require!(!hop_instructions.is_empty(), MultiHopperError::NoHopsProvided);
+        require!(hop_instructions.len() <= 4, MultiHopperError::ExcessiveHops);
 
-        // 1. Initial Balances Check for accurate balance differential math
-        let intermediate_initial_balance = ctx.accounts.hop_intermediate_vault.amount;
-        let user_destination_initial = ctx.accounts.user_destination_token.amount;
+        let initial_in_balance = ctx.accounts.user_source_token.amount;
+        let initial_out_balance = ctx.accounts.user_destination_token.amount;
 
-        // 2. Transfer token from user to router hop_in_vault
-        let cpi_transfer_in_ctx = CpiContext::new(
+        // Pull initial tokens into the program's routing escrow vault
+        let transfer_in_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.user_source_token.to_account_info(),
-                to: ctx.accounts.hop_in_vault.to_account_info(),
+                to: ctx.accounts.escrow_source_token.to_account_info(),
                 authority: ctx.accounts.user.to_account_info(),
             },
         );
-        token::transfer(cpi_transfer_in_ctx, amount_in)?;
+        token::transfer(transfer_in_ctx, amount_in)?;
 
-        // 3. Hop 1: Execution against First Pool (Token A -> Token B)
-        // Perform CPI to Target DEX Pool (e.g., Orca/Raydium mock or direct program call)
-        // Here we simulate the direct deterministic token transfer on the simulated DEX vault
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            b"router_vault_auth",
-            &[ctx.bumps.router_authority],
-        ]];
+        let mut current_amount_in = amount_in;
+        let remaining_accounts = ctx.remaining_accounts;
+        let mut account_offset: usize = 0;
 
-        let cpi_hop1_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.hop_in_vault.to_account_info(),
-                to: ctx.accounts.pool_one_source_vault.to_account_info(),
-                authority: ctx.accounts.router_authority.to_account_info(),
-            },
-            signer_seeds,
-        );
-        token::transfer(cpi_hop1_ctx, amount_in)?;
+        // Iterate through each hop deterministically
+        for (idx, hop) in hop_instructions.iter().enumerate() {
+            require!(
+                account_offset + (hop.accounts_len as usize) <= remaining_accounts.len(),
+                MultiHopperError::MalformedAccountInputs
+            );
 
-        // Pool One transfers swapped intermediate token to router intermediate vault
-        let cpi_hop1_out_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.pool_one_destination_vault.to_account_info(),
-                to: ctx.accounts.hop_intermediate_vault.to_account_info(),
-                authority: ctx.accounts.pool_one_authority.to_account_info(),
-            },
-            &[],
-        );
-        token::transfer(cpi_hop1_out_ctx, hop1_min_intermediate)?;
+            let hop_account_slice = &remaining_accounts[account_offset..account_offset + (hop.accounts_len as usize)];
+            account_offset += hop.accounts_len as usize;
 
-        // Reload intermediate account and assert intermediate slippage limit
-        ctx.accounts.hop_intermediate_vault.reload()?;
-        let intermediate_received = ctx
-            .accounts
-            .hop_intermediate_vault
-            .amount
-            .checked_sub(intermediate_initial_balance)
-            .ok_or(MultiHopperError::MathOverflow)?;
+            let hop_output_amount = execute_single_hop_cpi(
+                &ctx.accounts.config,
+                hop,
+                hop_account_slice,
+                current_amount_in,
+                &ctx.accounts.token_program,
+            )?;
 
-        require!(
-            intermediate_received >= hop1_min_intermediate,
-            MultiHopperError::IntermediateSlippageExceeded
-        );
+            require!(
+                hop_output_amount >= hop.minimum_expected_out,
+                MultiHopperError::IntermediateHopSlippageViolated
+            );
 
-        // 4. Hop 2: Execution against Second Pool (Token B -> Token C)
-        let cpi_hop2_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.hop_intermediate_vault.to_account_info(),
-                to: ctx.accounts.pool_two_source_vault.to_account_info(),
-                authority: ctx.accounts.router_authority.to_account_info(),
-            },
-            signer_seeds,
-        );
-        token::transfer(cpi_hop2_ctx, intermediate_received)?;
+            current_amount_in = hop_output_amount;
 
-        // Pool Two transfers final token to temporary router out vault
-        let cpi_hop2_out_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.pool_two_destination_vault.to_account_info(),
-                to: ctx.accounts.hop_out_vault.to_account_info(),
-                authority: ctx.accounts.pool_two_authority.to_account_info(),
-            },
-            &[],
-        );
-        token::transfer(cpi_hop2_out_ctx, minimum_amount_out)?;
+            emit!(HopExecuted {
+                hop_index: idx as u8,
+                protocol_id: hop.protocol_id,
+                amount_in: current_amount_in,
+                amount_out: hop_output_amount,
+            });
+        }
 
-        // 5. Fee Calculation & Dynamic Split
-        ctx.accounts.hop_out_vault.reload()?;
-        let final_gross_out = ctx.accounts.hop_out_vault.amount;
-        require!(
-            final_gross_out >= minimum_amount_out,
-            MultiHopperError::FinalSlippageExceeded
-        );
+        // Protocol fee computation
+        let config = &ctx.accounts.config;
+        let fee_amount = if config.protocol_fee_bps > 0 {
+            (current_amount_in as u128 * config.protocol_fee_bps as u128 / 10_000) as u64
+        } else {
+            0
+        };
 
-        let fee_bps = ctx.accounts.protocol_config.fee_bps;
-        let total_protocol_fee = final_gross_out
-            .checked_mul(fee_bps)
-            .ok_or(MultiHopperError::MathOverflow)?
-            .checked_div(FEE_DENOMINATOR)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        let platform_share = total_protocol_fee
-            .checked_mul(ctx.accounts.protocol_config.platform_fee_share_bps)
-            .ok_or(MultiHopperError::MathOverflow)?
-            .checked_div(FEE_DENOMINATOR)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        let referrer_share = total_protocol_fee
-            .checked_sub(platform_share)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        let user_net_amount = final_gross_out
-            .checked_sub(total_protocol_fee)
-            .ok_or(MultiHopperError::MathOverflow)?;
+        let user_final_amount = current_amount_in
+            .checked_sub(fee_amount)
+            .ok_or(MultiHopperError::ArithmeticUnderflow)?;
 
         require!(
-            user_net_amount >= minimum_amount_out,
-            MultiHopperError::SlippageExceededAfterFees
+            user_final_amount >= minimum_amount_out,
+            MultiHopperError::ExcessiveTerminalSlippage
         );
 
-        // 6. Transfer Fees to Platform Vault and Referrer Vault
-        if platform_share > 0 {
-            let fee_cpi = CpiContext::new_with_signer(
+        // Signer seeds for PDA escrow release
+        let seeds = &[
+            b"multihopper_config".as_ref(),
+            &[config.bump],
+        ];
+        let signer_seeds = &[&seeds[..]];
+
+        // Transfer fee to treasury if applicable
+        if fee_amount > 0 {
+            let fee_transfer_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
-                    from: ctx.accounts.hop_out_vault.to_account_info(),
-                    to: ctx.accounts.fee_collector_token.to_account_info(),
-                    authority: ctx.accounts.router_authority.to_account_info(),
+                    from: ctx.accounts.escrow_destination_token.to_account_info(),
+                    to: ctx.accounts.treasury_token_account.to_account_info(),
+                    authority: ctx.accounts.config.to_account_info(),
                 },
                 signer_seeds,
             );
-            token::transfer(fee_cpi, platform_share)?;
+            token::transfer(fee_transfer_ctx, fee_amount)?;
         }
 
-        if referrer_share > 0 {
-            let referrer_cpi = CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.hop_out_vault.to_account_info(),
-                    to: ctx.accounts.referrer_token.to_account_info(),
-                    authority: ctx.accounts.router_authority.to_account_info(),
-                },
-                signer_seeds,
-            );
-            token::transfer(referrer_cpi, referrer_share)?;
-        }
-
-        // 7. Transfer Net Out to User
-        let user_out_cpi = CpiContext::new_with_signer(
+        // Transfer final balance to user
+        let user_out_ctx = CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
-                from: ctx.accounts.hop_out_vault.to_account_info(),
+                from: ctx.accounts.escrow_destination_token.to_account_info(),
                 to: ctx.accounts.user_destination_token.to_account_info(),
-                authority: ctx.accounts.router_authority.to_account_info(),
+                authority: ctx.accounts.config.to_account_info(),
             },
             signer_seeds,
         );
-        token::transfer(user_out_cpi, user_net_amount)?;
+        token::transfer(user_out_ctx, user_final_amount)?;
 
-        // 8. Assert Post-Transfer Invariant
+        // Reload accounts and perform post-condition invariant asserts
+        ctx.accounts.user_source_token.reload()?;
         ctx.accounts.user_destination_token.reload()?;
-        let total_user_received = ctx
-            .accounts
-            .user_destination_token
-            .amount
-            .checked_sub(user_destination_initial)
-            .ok_or(MultiHopperError::MathOverflow)?;
+        
+        let actual_in_spent = initial_in_balance.saturating_sub(ctx.accounts.user_source_token.amount);
+        let actual_out_gained = ctx.accounts.user_destination_token.amount.saturating_sub(initial_out_balance);
 
-        require!(
-            total_user_received >= minimum_amount_out,
-            MultiHopperError::FinalSlippageExceeded
-        );
+        require!(actual_in_spent <= amount_in, MultiHopperError::InvariantViolatedSourceOverdrawn);
+        require!(actual_out_gained >= minimum_amount_out, MultiHopperError::InvariantViolatedDestSlippage);
 
-        // 9. Update Protocol Global Counters
-        let config = &mut ctx.accounts.protocol_config;
-        config.total_swaps = config.total_swaps.checked_add(1).unwrap();
+        let config_mut = &mut ctx.accounts.config;
+        config_mut.total_swaps = config_mut.total_swaps.checked_add(1).unwrap();
 
-        emit!(RouteExecutedEvent {
+        emit!(MultiHopCompleted {
             user: ctx.accounts.user.key(),
             amount_in,
-            amount_out: user_net_amount,
-            fee_deducted: total_protocol_fee,
-            referrer: ctx.accounts.referrer_token.key(),
-            timestamp: Clock::get()?.unix_timestamp,
+            amount_out: user_final_amount,
+            fee_collected: fee_amount,
+            hops_count: hop_instructions.len() as u8,
         });
 
         Ok(())
     }
 }
 
-// -----------------------------------------------------------------------------
-// ACCOUNT VALIDATION STRUCTS
-// -----------------------------------------------------------------------------
+// Low-level CPI dispatcher resolving to the targeted AMM
+fn execute_single_hop_cpi<'info>(
+    _config: &Account<'info, ProtocolConfig>,
+    hop: &HopInstruction,
+    account_slice: &[AccountInfo<'info>],
+    amount_in: u64,
+    _token_program: &Program<'info, Token>,
+) -> Result<u64> {
+    // Protocol IDs:
+    // 0 = Raydium CPMM / AMMv4
+    // 1 = Orca Whirlpool
+    // 2 = Meteora DLMM
+    match hop.protocol_id {
+        0 => {
+            // Raydium CPI call representation
+            require!(account_slice.len() >= 3, MultiHopperError::MalformedAccountInputs);
+            // In a live integration, invoke Raydium swap instruction:
+            // anchor_lang::solana_program::program::invoke(&instruction, account_slice)?;
+            // Output derived deterministically from the invariant:
+            let simulated_out = (amount_in as u128 * 9970 / 10000) as u64;
+            Ok(simulated_out)
+        }
+        1 => {
+            // Orca Whirlpool CPI representation
+            require!(account_slice.len() >= 3, MultiHopperError::MalformedAccountInputs);
+            let simulated_out = (amount_in as u128 * 9980 / 10000) as u64;
+            Ok(simulated_out)
+        }
+        2 => {
+            // Meteora DLMM CPI representation
+            require!(account_slice.len() >= 3, MultiHopperError::MalformedAccountInputs);
+            let simulated_out = (amount_in as u128 * 9985 / 10000) as u64;
+            Ok(simulated_out)
+        }
+        _ => Err(MultiHopperError::UnsupportedProtocolId.into()),
+    }
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, Debug)]
+pub struct HopInstruction {
+    pub protocol_id: u8,
+    pub accounts_len: u8,
+    pub minimum_expected_out: u64,
+}
+
+#[account]
+pub struct ProtocolConfig {
+    pub admin: Pubkey,
+    pub fee_treasury: Pubkey,
+    pub protocol_fee_bps: u16,
+    pub total_volume_usd: u64,
+    pub total_swaps: u64,
+    pub bump: u8,
+}
+
+impl ProtocolConfig {
+    pub const LEN: usize = 8 + 32 + 32 + 2 + 8 + 8 + 1 + 64;
+}
 
 #[derive(Accounts)]
 pub struct InitializeProtocol<'info> {
     #[account(
         init,
         payer = admin,
-        space = 8 + ProtocolConfig::INIT_SPACE,
-        seeds = [b"protocol_config"],
+        space = ProtocolConfig::LEN,
+        seeds = [b"multihopper_config"],
         bump
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
-
+    pub config: Account<'info, ProtocolConfig>,
     #[account(mut)]
     pub admin: Signer<'info>,
-
-    /// CHECK: Safe address verified as fee collector
-    pub fee_collector: AccountInfo<'info>,
-
+    /// CHECK: Protocol revenue vault destination
+    pub fee_treasury: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct UpdateConfig<'info> {
+pub struct ExecuteMultiHop<'info> {
     #[account(
         mut,
-        seeds = [b"protocol_config"],
-        bump = protocol_config.bump,
-        has_one = admin @ MultiHopperError::UnauthorizedAdmin
+        seeds = [b"multihopper_config"],
+        bump = config.bump
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub config: Account<'info, ProtocolConfig>,
 
-    pub admin: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct ExecuteTwoHop<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    #[account(
-        mut,
-        seeds = [b"protocol_config"],
-        bump = protocol_config.bump
-    )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
-
-    /// CHECK: PDA signer authority for router vault operations
-    #[account(
-        seeds = [b"router_vault_auth"],
-        bump
-    )]
-    pub router_authority: AccountInfo<'info>,
-
-    // User Token Accounts
-    #[account(
-        mut,
-        constraint = user_source_token.owner == user.key() @ MultiHopperError::InvalidTokenOwner
-    )]
+    #[account(mut)]
     pub user_source_token: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = user_destination_token.owner == user.key() @ MultiHopperError::InvalidTokenOwner
-    )]
+    #[account(mut)]
     pub user_destination_token: Account<'info, TokenAccount>,
 
-    // Protocol Intermediate / Buffer Vaults
     #[account(
         mut,
-        seeds = [b"hop_in_vault", user_source_token.mint.as_ref()],
-        bump
+        constraint = escrow_source_token.owner == config.key() @ MultiHopperError::InvalidEscrowOwner
     )]
-    pub hop_in_vault: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        seeds = [b"hop_inter_vault", intermediate_mint.key().as_ref()],
-        bump
-    )]
-    pub hop_intermediate_vault: Account<'info, TokenAccount>,
+    pub escrow_source_token: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        seeds = [b"hop_out_vault", user_destination_token.mint.as_ref()],
-        bump
+        constraint = escrow_destination_token.owner == config.key() @ MultiHopperError::InvalidEscrowOwner
     )]
-    pub hop_out_vault: Account<'info, TokenAccount>,
+    pub escrow_destination_token: Account<'info, TokenAccount>,
 
-    pub intermediate_mint: Account<'info, Mint>,
-
-    // Pool 1 Accounts
-    /// CHECK: Validated via pool execution logic
-    pub pool_one_authority: Signer<'info>,
-    #[account(mut)]
-    pub pool_one_source_vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub pool_one_destination_vault: Account<'info, TokenAccount>,
-
-    // Pool 2 Accounts
-    /// CHECK: Validated via pool execution logic
-    pub pool_two_authority: Signer<'info>,
-    #[account(mut)]
-    pub pool_two_source_vault: Account<'info, TokenAccount>,
-    #[account(mut)]
-    pub pool_two_destination_vault: Account<'info, TokenAccount>,
-
-    // Fee Recipient Accounts
     #[account(
         mut,
-        constraint = fee_collector_token.owner == protocol_config.fee_collector @ MultiHopperError::InvalidFeeCollector
+        constraint = treasury_token_account.owner == config.fee_treasury @ MultiHopperError::InvalidTreasuryOwner
     )]
-    pub fee_collector_token: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    pub referrer_token: Account<'info, TokenAccount>,
+    pub treasury_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
 
-// -----------------------------------------------------------------------------
-// STATE DEFINITIONS
-// -----------------------------------------------------------------------------
-
-#[account]
-pub struct ProtocolConfig {
-    pub admin: Pubkey,                  // 32
-    pub fee_collector: Pubkey,          // 32
-    pub fee_bps: u64,                   // 8
-    pub platform_fee_share_bps: u64,    // 8
-    pub total_swaps: u64,               // 8
-    pub total_volume_usd: u64,          // 8
-    pub bump: u8,                       // 1
-}
-
-impl ProtocolConfig {
-    pub const INIT_SPACE: usize = 32 + 32 + 8 + 8 + 8 + 8 + 1;
-}
-
-// -----------------------------------------------------------------------------
-// EVENTS
-// -----------------------------------------------------------------------------
-
 #[event]
-pub struct ProtocolInitializedEvent {
+pub struct ProtocolInitialized {
     pub admin: Pubkey,
-    pub fee_collector: Pubkey,
-    pub fee_bps: u64,
-    pub platform_fee_share_bps: u64,
+    pub fee_treasury: Pubkey,
+    pub fee_bps: u16,
 }
 
 #[event]
-pub struct ConfigUpdatedEvent {
-    pub admin: Pubkey,
-    pub fee_bps: u64,
-    pub platform_fee_share_bps: u64,
-    pub fee_collector: Pubkey,
+pub struct HopExecuted {
+    pub hop_index: u8,
+    pub protocol_id: u8,
+    pub amount_in: u64,
+    pub amount_out: u64,
 }
 
 #[event]
-pub struct RouteExecutedEvent {
+pub struct MultiHopCompleted {
     pub user: Pubkey,
     pub amount_in: u64,
     pub amount_out: u64,
-    pub fee_deducted: u64,
-    pub referrer: Pubkey,
-    pub timestamp: i64,
+    pub fee_collected: u64,
+    pub hops_count: u8,
 }
-
-// -----------------------------------------------------------------------------
-// ERROR CODES
-// -----------------------------------------------------------------------------
 
 #[error_code]
 pub enum MultiHopperError {
-    #[msg("Fee basis points exceed maximum allowable rate (100 bps).")]
-    FeeBpsExceedsMaximum,
-    #[msg("Invalid share split bps configuration.")]
-    InvalidShareSplit,
-    #[msg("Caller is unauthorized to mutate administration parameters.")]
-    UnauthorizedAdmin,
-    #[msg("Zero input amount specified for multi-hop route.")]
-    ZeroAmountIn,
-    #[msg("Zero minimum output threshold specified.")]
-    ZeroMinimumAmountOut,
-    #[msg("Intermediate hop 1 slippage was exceeded.")]
-    IntermediateSlippageExceeded,
-    #[msg("Final route output slippage was exceeded.")]
-    FinalSlippageExceeded,
-    #[msg("Final amount out below minimum allowable after fee deduction.")]
-    SlippageExceededAfterFees,
-    #[msg("Arithmetic overflow or underflow detected.")]
-    MathOverflow,
-    #[msg("Invalid token account owner specified.")]
-    InvalidTokenOwner,
-    #[msg("Destination fee collector does not match protocol configuration.")]
-    InvalidFeeCollector,
+    #[msg("Protocol fee exceeds the maximum ceiling of 100 bps (1%)")]
+    FeeTooHigh,
+    #[msg("Input amount must be greater than zero")]
+    InvalidInputAmount,
+    #[msg("Zero hop instructions provided")]
+    NoHopsProvided,
+    #[msg("Max hop length is capped at 4")]
+    ExcessiveHops,
+    #[msg("Remaining accounts length does not match hop accounts specification")]
+    MalformedAccountInputs,
+    #[msg("Intermediate hop slippage violated")]
+    IntermediateHopSlippageViolated,
+    #[msg("Overall minimum destination slippage breached")]
+    ExcessiveTerminalSlippage,
+    #[msg("Arithmetic underflow during fee calculation")]
+    ArithmeticUnderflow,
+    #[msg("Unsupported AMM protocol ID")]
+    UnsupportedProtocolId,
+    #[msg("Invalid escrow token account owner")]
+    InvalidEscrowOwner,
+    #[msg("Invalid treasury account owner")]
+    InvalidTreasuryOwner,
+    #[msg("Invariant Violated: More source tokens debited than specified")]
+    InvariantViolatedSourceOverdrawn,
+    #[msg("Invariant Violated: Insufficient output tokens received")]
+    InvariantViolatedDestSlippage,
 }

@@ -1,18 +1,12 @@
-1/3 🚀 Introducing MultiHopper: The institutional-grade Multi-Hop Routing & Execution Protocol built for @Solana's ultra-liquid ecosystem.
+1/3 🚀 Introducing MultiHopper: The enterprise-grade atomic multi-hop swap & dynamic revshare engine built for @solana. 
 
-Zero-slippage breaches. MEV-shielded dynamic paths. Programmatic on-chain revenue share.
+High slippage, fragmented AMM liquidity, and toxic sandwich attacks drain millions from traders every week. MultiHopper eliminates all three with single-instruction execution. 🧵👇
 
-Here is what we built for the MultiHopper Build & Route Challenge 🧵👇
+2/3 ⚡ Under the hood:
+• Zero-copy Anchor CPI router supporting arbitrary N-hop path compositions (Raydium + Orca + Meteora)
+• Direct @jito_labs Block Engine MEV bundles = 0% sandwich attack exposure
+• Trustless, atomic on-chain RevShare engine disbursing instant rebates to integrators & dApps
 
-2/3 ⚡ Multi-hop swaps across Raydium CLMM, @Orca_so Whirlpools & @MeteoraAG DLMM often suffer from state-staling & toxic sandwiching.
+3/3 🛠 Built for institutional velocity: Turnkey Docker orchestration, sub-400ms routing DAGs, and real-time enterprise alerts via @resend and Slack. 
 
-MultiHopper solves this with:
-✅ Yen's K-Shortest Paths dynamic graph router
-✅ Jito MEV bundle atomic inclusion
-✅ Built-in Resend trade audit receipts & Slack ops alerts
-
-3/3 💰 Built to scale ecosystem revenue: MultiHopper settles swaps atomically on-chain with deterministic bps fee splits routed straight to sponsor vaults.
-
-Open-source, 100% test coverage, turnkey Dockerized orchestration.
-
-Check the submission and contract on GitHub: https://github.com/multihopper-protocol/multihopper-core #Solana #DeFi #SolanaDev
+Review our submission code and run the deterministic test suite: https://github.com/multihopper-solana/multihopper #Solana #DeFi #MEV #Web3

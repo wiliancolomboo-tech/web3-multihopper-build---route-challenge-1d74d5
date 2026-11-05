@@ -1,26 +1,37 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  multihopper-node:
+  multihopper-worker:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-engine-node
+    container_name: multihopper_routing_agent
     restart: always
     environment:
       - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
-      - PROGRAM_ID=${PROGRAM_ID:-MHop111111111111111111111111111111111111111}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - RESEND_FROM_EMAIL=${RESEND_FROM_EMAIL:-audit@multihopper.io}
-      - AUDIT_EMAIL_TO=${AUDIT_EMAIL_TO:-treasury@institutional.com}
-      - OPS_WEBHOOK_URL=${OPS_WEBHOOK_URL}
-      - PRIVATE_KEY_PATH=/etc/secrets/solana-wallet.json
-    volumes:
-      - ./secrets:/etc/secrets:ro
+      - JITO_BLOCK_ENGINE_URL=${JITO_BLOCK_ENGINE_URL:-https://mainnet.block-engine.jito.wtf}
+      - PROGRAM_ID=Hopp3rV111111111111111111111111111111111111
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - PORT=8080
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "node", "-e", "console.log('OK')"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
       retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: multihopper_prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"

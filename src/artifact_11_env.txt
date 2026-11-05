@@ -1,5 +1,14 @@
-SOLANA_RPC_URL="https://api.devnet.solana.com"
-MULTI_HOPPER_PROGRAM_ID="HoppEr5V1aM2wBhkb41VqWk23M17mPnN3q5HkLw4P6yq"
-SOLANA_PRIVATE_KEY_JSON="[1,23,45,...]"
-RESEND_API_KEY="re_123456789"
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+# Solana Network Configuration
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+SOLANA_NETWORK=mainnet-beta
+WALLET_KEYPAIR_PATH=/secrets/id.json
+
+# Protocol Governance Setup
+PROGRAM_ID=HoppER1111111111111111111111111111111111111
+PROTOCOL_FEE_BPS=10
+PARTNER_SHARE_BPS=3000
+
+# Enterprise Webhook & Telemetry Integrations
+DISCORD_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+RESEND_API_KEY=re_test_000000000000000000000000
+ALERT_EMAIL_RECIPIENT=treasury@enterprise-partner.org

@@ -1,12 +1,15 @@
 {
-  "name": "@multi-hopper/engine-client",
+  "name": "@multihopper/client-cli",
   "version": "1.0.0",
-  "description": "MultiHopper Routing Client & MEV Automation Daemon",
+  "description": "Production routing daemon and notification service for MultiHopper Solana",
   "main": "dist/index.js",
+  "bin": {
+    "multihopper": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
-    "start": "ts-node src/cli.ts",
-    "test": "mocha -r ts-node/register tests/**/*.test.ts --timeout 60000"
+    "start": "ts-node src/index.ts",
+    "route": "ts-node src/index.ts route"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",
@@ -19,11 +22,7 @@
     "winston": "^3.14.2"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.19",
-    "@types/mocha": "^10.0.8",
-    "@types/node": "^22.5.4",
-    "chai": "^4.5.0",
-    "mocha": "^10.7.3",
+    "@types/node": "^20.14.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   }

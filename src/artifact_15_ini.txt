@@ -1,0 +1,14 @@
+# Solana Network Configuration
+SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your-helius-key
+PROGRAM_ID=Hopp3rGcvw6jT6xJpP6F8YvK8C5V4Z9wX2E1M7N3Q8kL
+
+# Jito MEV Settings
+JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
+JITO_TIP_PAYMENT_ACCOUNT=96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5
+MAX_JITO_TIP_LAMPORTS=50000
+
+# Enterprise Telemetry Adapters
+SLACK_WEBHOOK_URL=https://example.com/webhook/slack-placeholder
+DISCORD_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+RESEND_API_KEY=re_test_000000000000000000000000
+REPORT_EMAIL=operations@multihopper.io

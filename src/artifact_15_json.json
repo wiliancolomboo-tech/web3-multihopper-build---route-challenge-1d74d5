@@ -1,13 +1,7 @@
 {
-  "timestamp": "2025-02-17T03:00:00.000Z",
-  "level": "INFO",
-  "service": "multihopper-engine",
-  "event": "SWAP_ROUTE_DISPATCHED",
-  "data": {
-    "signature": "3u7H...q7k8",
-    "route": ["USDC", "SOL", "BONK"],
-    "latency_ms": 48.2,
-    "gross_out": "49821400",
-    "partner_cut": "4982"
-  }
+  "status": "HEALTHY",
+  "programId": "MHoP8uC6b7K1cQ4Z9dYrX2kLpU3nJ4m5s6v7w8x9y1z",
+  "blockHeight": 268491024,
+  "trackedPools": 1420,
+  "jitoLatencyMs": 42
 }

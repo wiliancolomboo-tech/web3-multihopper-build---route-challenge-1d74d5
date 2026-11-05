@@ -1,5 +1,10 @@
-Liquidity on Solana is explosive, yet deeply fragmented across CPMMs, Whirlpools, and DLMMs. Naive multi-hop routing costs users up to 2.8% in slippage and leaves them vulnerable to toxic MEV sandwiches.
-
-Today, we are unveiling @MultiHopper: The High-Speed Atomic Multi-Hop & Revenue-Sharing Protocol on Solana! ⚡️
-
-Built for the MultiHopper Build & Route Challenge. Here is how we solved it 🧵👇
++---------------------------------------------------------------------------------------+
+|                                OPERATIONAL HEALTHCHECKS                               |
++--------------------------+-----------------------+------------------------------------+
+| Endpoint / Check         | Frequency             | Recovery Action                    |
++--------------------------+-----------------------+------------------------------------+
+| HTTP GET /health         | Every 10 seconds      | Restart docker container           |
+| RPC Latency (> 400ms)    | Continuous ping       | Failover to secondary Helius/Triton|
+| ALT Slot Freshness       | Every 100 blocks      | Re-index Lookup Table addresses    |
+| Program Account Rent     | Daily automated sweep | Top-up PDA rent balance            |
++--------------------------+-----------------------+------------------------------------+

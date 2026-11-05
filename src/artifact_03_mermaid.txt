@@ -1,25 +1,27 @@
 sequenceDiagram
     autonumber
-    actor Trader as User / DApp
-    participant Solver as MultiHopper Solver CLI
-    participant Program as MultiHopper Program (SVM)
-    participant AMMA as AMM Hop #1
-    participant AMMB as AMM Hop #2
-    participant Treasury as MultiHopper Treasury
-    participant Partner as Partner Account
-    participant Webhook as Resend / Slack Webhook
+    actor User as Trader / Client
+    participant CLI as MultiHopper CLI / Engine
+    participant Graph as Routing Graph Solver
+    participant Jito as Jito Block Engine
+    participant Chain as Solana On-Chain Router
+    participant AMM1 as Liquidity Pool 1 (Raydium)
+    participant AMM2 as Liquidity Pool 2 (Orca)
+    participant Webhook as Enterprise Telemetry
 
-    Trader->>Solver: Request Route (Token A -> Token C, Amount: 100 USDC)
-    Solver->>Solver: Graph Traversal (A -> B -> C): Estimated Out = 1.05 SOL
-    Solver->>Trader: Sign & Approve Transaction Payload
-    Trader->>Program: execute_multi_hop_swap(min_out: 1.00 SOL, hops: 2)
-    Program->>AMMA: CPI Swap Hop 1 (USDC -> Token B)
-    AMMA-->>Program: Return Intermediate Token B
-    Program->>AMMB: CPI Swap Hop 2 (Token B -> SOL)
-    AMMB-->>Program: Return Output SOL (1.05 SOL delivered)
-    Program->>Program: Verify (1.05 SOL >= 1.00 SOL). Surplus = 0.05 SOL.
-    Program->>Trader: Transfer 1.035 SOL (Principal + 70% Surplus)
-    Program->>Partner: Transfer 0.010 SOL (20% Surplus)
-    Program->>Treasury: Transfer 0.005 SOL (10% Surplus)
-    Program-->>Solver: Emit RouteExecutionEvent
-    Solver->>Webhook: Post Execution Dispatch (Latency, Route, Profit Split)
+    User->>CLI: Execute Swap (Token A -> Token C, 50,000 units)
+    CLI->>Graph: Fetch Best Route & Compute Intermediate Slips
+    Graph-->>CLI: Route: [A -> B via Pool 1, B -> C via Pool 2]
+    CLI->>CLI: Build Atomic Transaction with MultiHopper CPIs
+    CLI->>Jito: Submit Tip + Transaction Bundle
+    Jito->>Chain: Land Bundle on Validator Slot
+    Chain->>Chain: Validate Hop Invariants & Snapshot Balances
+    Chain->>AMM1: CPI: Swap Token A -> Token B
+    AMM1-->>Chain: Return Token B Output
+    Chain->>Chain: Verify Intermediate Minimum Threshold B
+    Chain->>AMM2: CPI: Swap Token B -> Token C
+    AMM2-->>Chain: Return Token C Output
+    Chain->>Chain: Enforce Terminal Minimum Received & Deduct Fee
+    Chain-->>User: Transfer Final Token C
+    CLI->>Webhook: Dispatch Execution Receipt (Slack & Resend)
+    CLI-->>User: Swap Successful (Signature & Details)

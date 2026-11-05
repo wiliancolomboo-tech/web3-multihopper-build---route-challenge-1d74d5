@@ -1,7 +1,1 @@
----
-
-# 6. Sponsor Handover & Turnkey Operations
-
-### 6.1 Containerization
-
-#### `Dockerfile`
+### 4.2 Turnkey Automation CLI: `src/cli.ts`

@@ -1,58 +1,58 @@
-import { Command } from "commander";
-import { Keypair, PublicKey } from "@solana/web3.js";
-import { MultiHopperRouterService, HopPlan } from "./router";
-import * as fs from "fs";
+import axios from "axios";
 
-const program = new Command();
+export interface RouteNotificationPayload {
+  txSignature: string;
+  user: string;
+  partner: string;
+  amountIn: string;
+  amountOut: string;
+  inputMint: string;
+  outputMint: string;
+  totalFee: string;
+  partnerCut: string;
+  hopsCount: number;
+}
 
-program
-  .name("multi-hopper-cli")
-  .description("Enterprise CLI for routing atomic multi-hop swaps across Solana DEXs")
-  .version("1.0.0");
+export class NotificationService {
+  private webhookUrl: string | undefined;
 
-program
-  .command("execute-route")
-  .requiredOption("-k, --keypair <path>", "Path to local keypair json")
-  .requiredOption("-i, --input-mint <pubkey>", "Input token mint address")
-  .requiredOption("-o, --output-mint <pubkey>", "Output token mint address")
-  .requiredOption("-a, --amount-in <number>", "Raw amount of input token")
-  .requiredOption("-m, --min-out <number>", "Minimum acceptable amount of output token")
-  .requiredOption("-r, --rpc <url>", "Solana RPC URL", "https://api.mainnet-beta.solana.com")
-  .action(async (options) => {
-    try {
-      const secret = JSON.parse(fs.readFileSync(options.keypair, "utf-8"));
-      const payer = Keypair.fromSecretKey(new Uint8Array(secret));
-      const programId = new PublicKey("Hop1111111111111111111111111111111111111111");
+  constructor() {
+    this.webhookUrl = process.env.DISCORD_SLACK_WEBHOOK_URL;
+  }
 
-      const router = new MultiHopperRouterService(options.rpc, payer, programId);
-
-      // Define 3-Hop Route: Input -> Orca Whirlpool -> Meteora DLMM -> User Destination
-      const sampleHops: HopPlan[] = [
-        {
-          ammType: 0, // Orca
-          poolProgramId: new PublicKey("whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"),
-          expectedOutput: BigInt(options.minOut) + 1000n,
-          minOutputForHop: BigInt(options.minOut),
-        },
-      ];
-
-      console.log(`[INFO] Submitting atomic multi-hop route for ${payer.publicKey.toBase58()}...`);
-      const sig = await router.executeMultiHopSwap(
-        new PublicKey(options.inputMint),
-        new PublicKey(options.outputMint),
-        new PublicKey(options.inputMint), // User source ATA
-        new PublicKey(options.outputMint), // User dest ATA
-        BigInt(options.amountIn),
-        BigInt(options.minOut),
-        sampleHops
-      );
-
-      console.log(`[SUCCESS] Route executed atomically. Tx: ${sig}`);
-      process.exit(0);
-    } catch (err: any) {
-      console.error(`[ERROR] Multi-hop route failed: ${err.message}`);
-      process.exit(1);
+  public async broadcastExecution(payload: RouteNotificationPayload): Promise<void> {
+    if (!this.webhookUrl) {
+      console.warn("[Telemetry] DISCORD_SLACK_WEBHOOK_URL not configured. Skipping webhook.");
+      return;
     }
-  });
 
-program.parse(process.argv);
+    const message = {
+      username: "MultiHopper Sentinel",
+      avatar_url: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+      embeds: [
+        {
+          title: "🚀 MultiHopper Atomic Swap Executed",
+          color: 0x14f195, // Solana Green
+          fields: [
+            { name: "Tx Signature", value: `[${payload.txSignature.slice(0, 16)}...](https://explorer.solana.com/tx/${payload.txSignature}?cluster=devnet)`, inline: false },
+            { name: "Input Amount", value: `${payload.amountIn} (${payload.inputMint.slice(0, 6)}...)`, inline: true },
+            { name: "Settled Output", value: `${payload.amountOut} (${payload.outputMint.slice(0, 6)}...)`, inline: true },
+            { name: "Hops Traversed", value: `${payload.hopsCount}`, inline: true },
+            { name: "Protocol Fee", value: payload.totalFee, inline: true },
+            { name: "Partner Rev-Share", value: payload.partnerCut, inline: true },
+            { name: "Integrator", value: `${payload.partner.slice(0, 8)}...`, inline: true },
+          ],
+          footer: { text: "MultiHopper Enterprise Engine • Solana Mainnet/Devnet" },
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+
+    try {
+      await axios.post(this.webhookUrl, message, { timeout: 5000 });
+      console.log("[Telemetry] Webhook alert successfully dispatched.");
+    } catch (err: any) {
+      console.error("[Telemetry] Failed to post webhook:", err.message);
+    }
+  }
+}

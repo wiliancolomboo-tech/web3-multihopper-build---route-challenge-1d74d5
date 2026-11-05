@@ -8,8 +8,8 @@ services:
     restart: always
     environment:
       - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - ALERT_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR_WEBHOOK_URL
-      - RESEND_API_KEY=re_123456789_abcdefg
+      - ALERT_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+      - RESEND_API_KEY=re_test_000000000000000000000000
       - ALERT_RECIPIENT_EMAIL=settlement@multihopper.io
       - PORT=8080
     ports:

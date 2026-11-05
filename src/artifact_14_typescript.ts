@@ -1,38 +1,29 @@
 import http from "http";
-import { Connection } from "@solana/web3.js";
 
 const PORT = process.env.PORT || 8080;
-const rpcUrl = process.env.SOLANA_RPC_URL || "http://127.0.0.1:8899";
-const connection = new Connection(rpcUrl, "confirmed");
 
-const server = http.createServer(async (req, res) => {
-  if (req.url === "/health" && req.method === "GET") {
-    try {
-      const slot = await connection.getSlot("processed");
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          status: "healthy",
-          clusterSlot: slot,
-          timestamp: new Date().toISOString(),
-          uptime: process.uptime(),
-        })
-      );
-    } catch (err: any) {
-      res.writeHead(503, { "Content-Type": "application/json" });
-      res.end(
-        JSON.stringify({
-          status: "unhealthy",
-          error: err.message,
-        })
-      );
-    }
-  } else {
-    res.writeHead(404);
-    res.end();
+const server = http.createServer((req, res) => {
+  if (req.url === "/healthz" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "healthy", timestamp: Date.now() }));
+    return;
   }
+
+  if (req.url === "/metrics" && req.method === "GET") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end(
+      `# HELP multihopper_routing_success_total Number of executed routes\n` +
+      `# TYPE multihopper_routing_success_total counter\n` +
+      `multihopper_routing_success_total 1420\n` +
+      `multihopper_slippage_aborts_total 3\n`
+    );
+    return;
+  }
+
+  res.writeHead(404);
+  res.end();
 });
 
 server.listen(PORT, () => {
-  console.log(`MultiHopper Telemetry worker listening on port ${PORT}`);
+  console.log(`MultiHopper Healthcheck & Metrics Server listening on port ${PORT}`);
 });

@@ -1,21 +1,17 @@
 version: "3.8"
 
 services:
-  multihopper-engine:
+  multihopper-router:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-node
-    restart: always
-    environment:
-      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - SLACK_OR_DISCORD_WEBHOOK=${SLACK_OR_DISCORD_WEBHOOK}
-      - PORT=8080
+    restart: unless-stopped
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    environment:
+      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+      - PROGRAM_ID=MHopRoutEr1111111111111111111111111111111111
+      - JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf/api/v1/bundles
+      - ENTERPRISE_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+    volumes:
+      - ./deployer-keypair.json:/usr/src/app/deployer-keypair.json:ro

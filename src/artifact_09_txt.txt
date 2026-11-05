@@ -1,9 +1,9 @@
-+---------------------------------------------------------------------------------------+
-| Incident Classification & Telemetry Verification                                      |
-+----------------------+-----------------------------+----------------------------------+
-| Anomaly              | Trigger Condition           | Remediation Action               |
-+----------------------+-----------------------------+----------------------------------+
-| Slippage Exhaustion  | SlippageExceeded code 6005  | Check venue pool depths; recalibrate|
-| RPC Disconnect       | HTTP 429 / Block lag > 15   | Switch endpoint to fallback RPC  |
-| Buffer Balance Leak  | Intermediate Vault ATA > 0  | Re-run atomic sweep instruction  |
-+----------------------+-----------------------------+----------------------------------+
+GET /health
+Status: 200 OK
+{
+  "status": "HEALTHY",
+  "programId": "MHop111111111111111111111111111111111111111",
+  "totalRoutesExecuted": 14209,
+  "lastSlotProcessed": 284192042,
+  "uptimeSeconds": 864200
+}

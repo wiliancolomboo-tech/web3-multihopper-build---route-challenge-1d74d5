@@ -1,10 +1,5 @@
-+--------------------+-----------------------------+---------------------+-------------------------+
-| Test Case ID       | Target Scenario             | Assertion Tested    | Result                  |
-+--------------------+-----------------------------+---------------------+-------------------------+
-| QA-MH-01           | Initialize Config           | Fee <= 500 BPS      | PASS (Confirmed)        |
-| QA-MH-02           | Exceed Fee Cap              | FeeBpsExceeded Err  | PASS (Reverted cleanly) |
-| QA-MH-03           | Zero Input Protection       | ZeroAmountIn Err    | PASS (Reverted cleanly) |
-| QA-MH-04           | Slippage Breach Rollback    | Atomic Reversion    | PASS (Zero funds lost)  |
-| QA-MH-05           | Unauthorized Revenue Claim  | Unauthorized Err    | PASS (Signer enforced)  |
-| QA-MH-06           | Max Hop Overflow (> 4 Hops) | ExceededMaxHops Err | PASS (Bounds enforced)  |
-+--------------------+-----------------------------+---------------------+-------------------------+
+---
+
+# 6. Sponsor Handover & Turnkey Operations
+
+### 6.1 Deterministic Deployment Commands

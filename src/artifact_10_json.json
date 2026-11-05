@@ -1,7 +1,10 @@
 {
-  "status": "HEALTHY",
-  "programId": "MHopR11111111111111111111111111111111111111",
-  "latestSlot": 268492011,
-  "mempoolProtection": "JITO_ENABLED",
-  "circuitBreaker": "ACTIVE"
+  "status": "healthy",
+  "version": "1.0.0",
+  "uptimeSeconds": 14205,
+  "trackedPools": 842,
+  "averageRouteLatencyMs": 14.2,
+  "totalVolumeRoutedUsd": 2491024.50,
+  "protocolFeesAccumulatedUsd": 2491.02,
+  "systemInvariants": "VALID"
 }

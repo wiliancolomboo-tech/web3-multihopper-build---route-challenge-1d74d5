@@ -1,7 +1,8 @@
 {
-  "status": "healthy",
-  "programId": "MHoP8B82Y8cK9Tf8oWkX28K8KjZ4G8Qc7D8N8P8K8vB",
-  "lastSlotProcessed": 284910244,
-  "activeRoutePools": 142,
-  "uptimeSeconds": 86420
+  "status": "HEALTHY",
+  "program_id": "MHoP8r2k8H7qD2GvM8wP9E5N9B1UqF3XoZ6yK2vT4gR",
+  "active_venues": ["Orca_Whirlpool", "Raydium_CPMM", "Meteora_DLMM", "Phoenix_CLOB"],
+  "jito_block_engine": "CONNECTED",
+  "average_hop_latency_ms": 11.4,
+  "circuit_breaker": "ARMED_NORMAL"
 }

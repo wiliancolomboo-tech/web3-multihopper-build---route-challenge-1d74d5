@@ -1,7 +1,7 @@
 SOLANA_RPC_URL=https://api.devnet.solana.com
 PROGRAM_ID=Hop1111111111111111111111111111111111111111
 KEYPAIR_PATH=/app/credentials/id.json
-RESEND_API_KEY=re_enterprise_live_key_9981823719
+RESEND_API_KEY=re_test_000000000000000000000000
 NOTIFICATION_EMAIL=ops@multihopper.io
-ENTERPRISE_WEBHOOK_URL=https://discord.com/api/webhooks/123456789/abcdefghijklmnopqrstuvwxyz
+ENTERPRISE_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
 PORT=8080

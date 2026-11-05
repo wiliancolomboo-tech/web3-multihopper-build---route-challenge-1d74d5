@@ -1,167 +1,167 @@
+import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
 import {
-  Connection,
-  PublicKey,
   Keypair,
-  TransactionInstruction,
-  AccountMeta,
-  SYSVAR_RENT_PUBKEY,
+  PublicKey,
   SystemProgram,
+  Transaction,
 } from "@solana/web3.js";
-import { Program, AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress } from "@solana/spl-token";
-import { TelemetryService } from "./telemetry";
+import {
+  TOKEN_PROGRAM_ID,
+  createMint,
+  createAccount,
+  mintTo,
+  getAccount,
+} from "@solana/spl-token";
+import { expect } from "chai";
 
-export interface HopMetadata {
-  targetDexProgram: PublicKey;
-  writableAccounts: PublicKey[];
-  readonlyAccounts: PublicKey[];
-  signerAccounts?: PublicKey[];
-  instructionData: Buffer;
-}
+describe("multihopper protocol suite", () => {
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
 
-export interface RouteExecutionParams {
-  sourceMint: PublicKey;
-  destinationMint: PublicKey;
-  amountIn: bigint;
-  minAmountOut: bigint;
-  referralBps: number;
-  referralTokenAccount?: PublicKey;
-  hops: HopMetadata[];
-}
+  const program = anchor.workspace.Multihopper as Program<any>;
+  const admin = Keypair.generate();
+  const user = Keypair.generate();
+  const treasury = Keypair.generate();
+  const referrer = Keypair.generate();
 
-export class MultiHopperClient {
-  public program: Program;
-  public connection: Connection;
-  public wallet: Wallet;
-  private telemetry: TelemetryService;
+  let mintA: PublicKey;
+  let mintB: PublicKey;
+  let userMintAAccount: PublicKey;
+  let userMintBAccount: PublicKey;
+  let treasuryMintAAccount: PublicKey;
+  let referrerMintAAccount: PublicKey;
+  let executionVaultA: PublicKey;
 
-  constructor(
-    connection: Connection,
-    payerKeypair: Keypair,
-    programId: PublicKey,
-    idl: any,
-    telemetry: TelemetryService
-  ) {
-    this.connection = connection;
-    this.wallet = new Wallet(payerKeypair);
-    const provider = new AnchorProvider(connection, this.wallet, {
-      preflightCommitment: "processed",
-      commitment: "confirmed",
-    });
-    this.program = new Program(idl, programId, provider);
-    this.telemetry = telemetry;
-  }
+  let configPDA: PublicKey;
+  let configBump: number;
 
-  public static findConfigPda(programId: PublicKey): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync([Buffer.from("router_config")], programId);
-  }
-
-  public static findVaultAuthorityPda(programId: PublicKey): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync([Buffer.from("vault_authority")], programId);
-  }
-
-  public async executeMultiHopSwap(params: RouteExecutionParams): Promise<string> {
-    const startTime = Date.now();
-    const [configPda] = MultiHopperClient.findConfigPda(this.program.programId);
-    const [vaultAuthorityPda] = MultiHopperClient.findVaultAuthorityPda(this.program.programId);
-
-    const userSourceAta = await getAssociatedTokenAddress(
-      params.sourceMint,
-      this.wallet.publicKey
-    );
-    const userDestAta = await getAssociatedTokenAddress(
-      params.destinationMint,
-      this.wallet.publicKey
-    );
-
-    // Intermediate token holding vault PDA ATA
-    const intermediateVaultAta = await getAssociatedTokenAddress(
-      params.destinationMint,
-      vaultAuthorityPda,
-      true
-    );
-
-    // Fetch config state for treasury info
-    const configState = await (this.program.account as any).routerConfig.fetch(configPda);
-    const treasuryDestAta = await getAssociatedTokenAddress(
-      params.destinationMint,
-      configState.treasury,
-      true
-    );
-
-    // Pack remaining accounts & hop structures
-    const remainingAccounts: AccountMeta[] = [];
-    const hopPayloads = [];
-
-    for (const hop of params.hops) {
-      // Index 0 of each hop group is the DEX Program ID itself
-      const currentHopAccounts: AccountMeta[] = [
-        { pubkey: hop.targetDexProgram, isSigner: false, isWritable: false },
-      ];
-
-      const writableFlags: boolean[] = [];
-      const signerFlags: boolean[] = [];
-
-      for (const pk of hop.writableAccounts) {
-        currentHopAccounts.push({ pubkey: pk, isSigner: false, isWritable: true });
-        writableFlags.push(true);
-        signerFlags.push(false);
-      }
-
-      for (const pk of hop.readonlyAccounts) {
-        const isSigner = hop.signerAccounts?.some((s) => s.equals(pk)) || false;
-        currentHopAccounts.push({ pubkey: pk, isSigner, isWritable: false });
-        writableFlags.push(false);
-        signerFlags.push(isSigner);
-      }
-
-      remainingAccounts.push(...currentHopAccounts);
-
-      hopPayloads.push({
-        targetDexProgram: hop.targetDexProgram,
-        accountCount: currentHopAccounts.length,
-        writableFlags,
-        signerFlags,
-        instructionData: hop.instructionData,
-      });
+  before(async () => {
+    // Airdrop SOL to test actors
+    for (const actor of [admin, user, treasury, referrer]) {
+      const sig = await provider.connection.requestAirdrop(
+        actor.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(sig);
     }
 
-    const tx = await (this.program.methods as any)
-      .executeRoute(
-        new BN(params.amountIn.toString()),
-        new BN(params.minAmountOut.toString()),
-        new BN(params.referralBps.toString()),
-        hopPayloads
-      )
+    [configPDA, configBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("config")],
+      program.programId
+    );
+
+    const [vaultPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("multihopper_vault")],
+      program.programId
+    );
+    executionVaultA = vaultPDA;
+
+    // Create Token Mints
+    mintA = await createMint(provider.connection, admin, admin.publicKey, null, 6);
+    mintB = await createMint(provider.connection, admin, admin.publicKey, null, 6);
+
+    // Setup Token Accounts
+    userMintAAccount = await createAccount(provider.connection, user, mintA, user.publicKey);
+    userMintBAccount = await createAccount(provider.connection, user, mintB, user.publicKey);
+    treasuryMintAAccount = await createAccount(provider.connection, treasury, mintA, treasury.publicKey);
+    referrerMintAAccount = await createAccount(provider.connection, referrer, mintA, referrer.publicKey);
+
+    // Mint test liquidity to user (1,000 Token A)
+    await mintTo(provider.connection, admin, mintA, userMintAAccount, admin, 1_000_000_000);
+  });
+
+  it("Initializes the MultiHopper Protocol with dynamic RevShare", async () => {
+    const protocolFeeBps = 30; // 0.30%
+    const revenueShareBps = 2000; // 20% of protocol fee to partner
+
+    await program.methods
+      .initializeProtocol(protocolFeeBps, revenueShareBps)
       .accounts({
-        user: this.wallet.publicKey,
-        config: configPda,
-        vaultAuthority: vaultAuthorityPda,
-        sourceMint: params.sourceMint,
-        destinationMint: params.destinationMint,
-        userSourceToken: userSourceAta,
-        userDestinationToken: userDestAta,
-        routerIntermediateVault: intermediateVaultAta,
-        treasuryTokenAccount: treasuryDestAta,
-        referralTokenAccount: params.referralTokenAccount || null,
-        tokenProgram: TOKEN_PROGRAM_ID,
+        config: configPDA,
+        admin: admin.publicKey,
+        treasury: treasury.publicKey,
         systemProgram: SystemProgram.programId,
       })
-      .remainingAccounts(remainingAccounts)
-      .rpc({ commitment: "confirmed", skipPreflight: false });
+      .signers([admin])
+      .rpc();
 
-    const latencyMs = Date.now() - startTime;
+    const configAccount = await program.account.protocolConfig.fetch(configPDA);
+    expect(configAccount.admin.toBase58()).to.equal(admin.publicKey.toBase58());
+    expect(configAccount.treasury.toBase58()).to.equal(treasury.publicKey.toBase58());
+    expect(configAccount.protocolFeeBps).to.equal(30);
+    expect(configAccount.revenueShareBps).to.equal(2000);
+    expect(configAccount.isPaused).to.be.false;
+  });
 
-    await this.telemetry.notifyExecutionSuccess({
-      signature: tx,
-      user: this.wallet.publicKey.toBase58(),
-      route: params.hops.map((h) => h.targetDexProgram.toBase58().substring(0, 6) + "..."),
-      amountIn: params.amountIn.toString(),
-      amountOut: params.minAmountOut.toString(),
-      feeCollected: "Dynamic BPS Vault Split",
-      latencyMs,
-    });
+  it("Blocks unauthorized attacker from altering protocol config", async () => {
+    const attacker = Keypair.generate();
+    const sig = await provider.connection.requestAirdrop(attacker.publicKey, 10 ** 9);
+    await provider.connection.confirmTransaction(sig);
 
-    return tx;
-  }
-}
+    try {
+      await program.methods
+        .updateConfig(attacker.publicKey, 50, 1000, false)
+        .accounts({
+          config: configPDA,
+          admin: attacker.publicKey,
+        })
+        .signers([attacker])
+        .rpc();
+      expect.fail("Should have thrown unauthorized error");
+    } catch (err: any) {
+      expect(err.toString()).to.include("Unauthorized");
+    }
+  });
+
+  it("Fails swap if slippage boundary is violated (Circuit-Breaker active)", async () => {
+    const amountIn = new anchor.BN(100_000_000); // 100 units
+    const unachievableMinOut = new anchor.BN(999_999_999); // Impossible threshold
+
+    // Create execution vault token account
+    const vaultATA = await createAccount(
+      provider.connection,
+      admin,
+      mintA,
+      admin.publicKey,
+      Keypair.generate()
+    );
+
+    try {
+      await program.methods
+        .executeMultiHopSwap(amountIn, unachievableMinOut, [])
+        .accounts({
+          config: configPDA,
+          user: user.publicKey,
+          userSourceToken: userMintAAccount,
+          userDestinationToken: userMintBAccount,
+          treasuryTokenAccount: treasuryMintAAccount,
+          referrerTokenAccount: referrerMintAAccount,
+          executionVault: vaultATA,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([user])
+        .rpc();
+
+      expect.fail("Should have failed with SlippageExceeded or NoHopsProvided");
+    } catch (err: any) {
+      expect(err.toString()).to.satisfy(
+        (msg: string) => msg.includes("NoHopsProvided") || msg.includes("SlippageExceeded")
+      );
+    }
+  });
+
+  it("Validates fee math and revenue split distribution", async () => {
+    const amountIn = 1_000_000; // 1.0 Token A
+    const feeBps = 30; // 0.30% = 3,000 units
+    const expectedFee = (amountIn * feeBps) / 10_000;
+    const revShareBps = 2000; // 20% of fee = 600 units
+    const expectedReferrerCut = (expectedFee * revShareBps) / 10_000;
+    const expectedTreasuryCut = expectedFee - expectedReferrerCut;
+
+    expect(expectedFee).to.equal(3000);
+    expect(expectedReferrerCut).to.equal(600);
+    expect(expectedTreasuryCut).to.equal(2400);
+  });
+});

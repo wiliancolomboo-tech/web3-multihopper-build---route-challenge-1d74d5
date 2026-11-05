@@ -1,6 +1,9 @@
-2/6 Under the hood: MultiHopper couples a directed acyclic graph (DAG) off-chain solver with an atomic Anchor CPI settlement core.
-
-⚡️ Up to 4 hops in 1 single transaction
-🛡️ Sub-hop slippage invariants
-🤖 Jito bundle relay for zero mempool exposure
-💸 Programmatic, on-chain partner revenue share
+client/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── services/
+    │   ├── notification.ts
+    │   └── resend.ts
+    ├── index.ts
+    └── router.ts

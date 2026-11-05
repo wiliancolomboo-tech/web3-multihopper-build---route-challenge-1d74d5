@@ -1,9 +1,8 @@
 {
-  "status": "healthy",
-  "uptime_seconds": 18420,
-  "last_slot_indexed": 268492041,
-  "active_pools_monitored": 1420,
-  "successful_swaps_24h": 512,
-  "failed_routes_prevented": 34,
-  "total_revenue_share_sol": 18.42
+  "status": "HEALTHY",
+  "programId": "MHop111111111111111111111111111111111111111",
+  "blockEngineConnected": true,
+  "lastSettledBlock": 268910411,
+  "averageHopLatencyMs": 38.4,
+  "uptimeSeconds": 140284
 }

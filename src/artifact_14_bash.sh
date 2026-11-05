@@ -1,23 +1,21 @@
-# 1. Build and test on-chain Anchor smart contract
-cd programs/multihopper_router
-cargo build-sbf
+# 1. Build Anchor Program
+anchor build
+
+# 2. Deploy to Solana Devnet or Mainnet
+solana program deploy \
+  --program-id target/deploy/multihopper-keypair.json \
+  target/deploy/multihopper.so \
+  --url https://api.devnet.solana.com
+
+# 3. Run Test Suite with Full Invariant Verification
 anchor test
 
-# 2. Deploy to Solana Devnet / Mainnet
-solana program deploy \
-  --program-id target/deploy/multihopper_router-keypair.json \
-  target/deploy/multihopper_router.so \
-  --url-rpc https://api.devnet.solana.com
+# 4. Spin up Off-Chain Engine & Notifications with Docker
+docker-compose up -d --build
 
-# 3. Launch Dockerized MultiHopper SOR Microservice
-docker compose up -d --build
-
-# 4. Verify Engine Healthcheck
-curl http://localhost:8080/health
-# Response: {"status":"healthy","uptime":3.12,"timestamp":1729000000000,"protocol":"MultiHopper Engine v1.0"}
-
-# 5. Execute sample multi-hop route quote
-npx ts-node src/cli.ts quote \
-  -i So11111111111111111111111111111111111111112 \
-  -o DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 \
-  -a 1000000000
+# 5. Execute a Multi-Hop Swap via CLI
+npx ts-node src/cli.ts execute-route \
+  --in-mint So11111111111111111111111111111111111111112 \
+  --out-mint EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v \
+  --amount 1000000 \
+  --slippage-bps 30

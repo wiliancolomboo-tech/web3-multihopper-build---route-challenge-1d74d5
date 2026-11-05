@@ -1,7 +1,7 @@
 client/
 ├── package.json
 ├── tsconfig.json
-├── src/
-│   ├── engine.ts
-│   ├── telemetry.ts
-│   └── cli.ts
+└── src/
+    ├── agent.ts
+    ├── notifications.ts
+    └── route-finder.ts

@@ -1,26 +1,21 @@
-+---------------------------------------------------------------------------------------+
-|                                OFF-CHAIN TOPOLOGY                                     |
-|                                                                                       |
-|   [ Solana Geyser / RPC Node ] <==== Reserve Updates ===== [ Dynamic Pool Cache ]     |
-|                                                                    |                  |
-|                                                                    v                  |
-|   [ MultiHopper Daemon / CLI ] === Direct Jito Bundle ===> [ Jito Block Engine ]     |
-|              |                                                                        |
-|              +==> HTTPS POST ==> [ Discord / Slack Alert Webhook ]                    |
-|              +==> REST API   ==> [ Resend Email Settlement Gateway ]                  |
-+---------------------------------------------------------------------------------------+
-                                           |
-                                           | Atomic Transaction Payload
-                                           v
-+---------------------------------------------------------------------------------------+
-|                             ON-CHAIN ANCHOR ROUTER                                    |
-|                                                                                       |
-|   Program: HojP8p7yZ9u7V5oF8kKk9n3z2V1u9yT4a2b1c0dE3fG                                |
-|   State: [ GlobalConfig PDA ]  |  [ PartnerConfig PDA ]                               |
-|                                                                                       |
-|   Instruction: `execute_multi_hop_swap`                                               |
-|   - Verifies Hop Path (Hop 1 -> Hop 2 -> Hop N)                                       |
-|   - Executes CPI to Orca Whirlpools / Raydium Swap Router                             |
-|   - Enforces Terminal Balance Invariant (Pre-swap vs Post-swap)                       |
-|   - Protocol Fee Split to Protocol Treasury & Partner Referrer                        |
-+---------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------+
+|                                    MULTIHOPPER TOPOLOGY                                          |
+|                                                                                                  |
+|   [ Trader Client / Trading Bot ]                                                                |
+|               |                                                                                  |
+|   (gRPC / WebSocket / HTTPS)                                                                     |
+|               v                                                                                  |
+|   +------------------------------------------------------------------------------------------+   |
+|   |                       MultiHopper Orchestrator Daemon (Node/TS)                          |   |
+|   |  - Route Path Optimization Matrix (Dijkstra / Bellman-Ford)                              |   |
+|   |  - Slippage Calculator & Deadlines Protection Engine                                     |   |
+|   |  - CPI Instruction Marshaler & Account Vector Resolver                                   |   |
+|   +------------------------------------------------------------------------------------------+   |
+|         |                                      |                                    |            |
+|    (Tx Payload)                           (Jito Tip)                         (Webhook Events)    |
+|         v                                      v                                    v            |
+|   +-----------------------+              +-----------------------+           +---------------+   |
+|   | MultiHopper On-Chain  |              |   Jito Block Engine   |           | Discord/Slack |   |
+|   | Program (Anchor Core) |              |   (Mev-Protected Tx)  |           | & Resend API  |   |
+|   +-----------------------+              +-----------------------+           +---------------+   |
++--------------------------------------------------------------------------------------------------+

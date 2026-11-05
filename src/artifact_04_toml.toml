@@ -1,12 +1,12 @@
 [package]
-name = "multihopper_router"
+name = "multihopper"
 version = "0.1.0"
-description = "MultiHopper Solana Multi-Hop Atomic Router with RevShare"
+description = "Enterprise Multi-Hop Liquidity Router and Revenue Share Protocol"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "multihopper_router"
+name = "multihopper"
 
 [features]
 no-entrypoint = []
@@ -18,4 +18,3 @@ default = []
 [dependencies]
 anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
 anchor-spl = { version = "0.30.1", features = ["token"] }
-solana-program = "=1.18.26"

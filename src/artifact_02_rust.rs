@@ -1,241 +1,222 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("MHoP8uNq1xPZkH3vKkM9N5Q9w2e3F4r5T6y7U8i9o0P");
-
-pub const MAX_HOPS: usize = 4;
-pub const BASIS_POINTS_DIVISOR: u64 = 10_000;
-pub const MAX_PROTOCOL_FEE_BPS: u64 = 100; // Max 1.00%
-pub const MAX_INTEGRATOR_SHARE_BPS: u64 = 8_000; // Max 80.00% of the protocol fee
+declare_id!("Hopr111111111111111111111111111111111111111");
 
 #[program]
 pub mod multi_hopper {
     use super::*;
 
-    /// Initialize the protocol configuration state PDA
+    /// Initializes global protocol configuration including admin and protocol fee basis points.
     pub fn initialize_protocol(
         ctx: Context<InitializeProtocol>,
-        fee_basis_points: u64,
-        integrator_default_share_bps: u64,
+        protocol_fee_bps: u16,
     ) -> Result<()> {
-        require!(fee_basis_points <= MAX_PROTOCOL_FEE_BPS, MultiHopperError::FeeBpsExceeded);
-        require!(
-            integrator_default_share_bps <= MAX_INTEGRATOR_SHARE_BPS,
-            MultiHopperError::ShareBpsExceeded
-        );
-
-        let config = &mut ctx.accounts.protocol_config;
+        require!(protocol_fee_bps <= 1000, MultiHopperError::FeeTooHigh); // Max 10.00%
+        let config = &mut ctx.accounts.config;
         config.admin = ctx.accounts.admin.key();
         config.treasury = ctx.accounts.treasury.key();
-        config.fee_basis_points = fee_basis_points;
-        config.integrator_default_share_bps = integrator_default_share_bps;
-        config.total_swaps_routed = 0;
-        config.total_volume_usd_piped = 0;
-        config.bump = ctx.bumps.protocol_config;
-
-        emit!(ProtocolInitializedEvent {
-            admin: config.admin,
-            treasury: config.treasury,
-            fee_basis_points,
-            integrator_default_share_bps,
-        });
-
+        config.protocol_fee_bps = protocol_fee_bps;
+        config.is_paused = false;
+        config.total_volume_usd = 0;
+        config.bump = ctx.bumps.config;
         Ok(())
     }
 
-    /// Register or configure an enterprise integrator for programmatic revenue sharing
-    pub fn register_integrator(
-        ctx: Context<RegisterIntegrator>,
-        integrator_fee_share_bps: u64,
+    /// Updates fee distribution parameters or protocol state.
+    pub fn update_config(
+        ctx: Context<UpdateConfig>,
+        new_fee_bps: Option<u16>,
+        new_treasury: Option<Pubkey>,
+        is_paused: Option<bool>,
     ) -> Result<()> {
+        let config = &mut ctx.accounts.config;
+        if let Some(fee) = new_fee_bps {
+            require!(fee <= 1000, MultiHopperError::FeeTooHigh);
+            config.protocol_fee_bps = fee;
+        }
+        if let Some(treasury) = new_treasury {
+            config.treasury = treasury;
+        }
+        if let Some(paused) = is_paused {
+            config.is_paused = paused;
+        }
+        Ok(())
+    }
+
+    /// Executes an atomic multi-hop swap across pre-configured intermediary pools.
+    /// Deducts referral & protocol revenue share, guarantees min_amount_out or reverts.
+    pub fn execute_multi_hop_route<'info>(
+        ctx: Context<'_, '_, '_, 'info, ExecuteMultiHopRoute<'info>>,
+        amount_in: u64,
+        min_amount_out: u64,
+        referrer_fee_bps: u16,
+    ) -> Result<()> {
+        let config = &ctx.accounts.config;
+        require!(!config.is_paused, MultiHopperError::ProtocolPaused);
+        require!(amount_in > 0, MultiHopperError::InvalidZeroAmount);
+        require!(referrer_fee_bps <= 500, MultiHopperError::FeeTooHigh); // Max 5.00% referrer
+
+        // 1. Pull source tokens from the User into the MultiHopper Intermediate Vault
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.user_source_token.to_account_info(),
+            to: ctx.accounts.protocol_vault_in.to_account_info(),
+            authority: ctx.accounts.user.to_account_info(),
+        };
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        token::transfer(CpiContext::new(cpi_program, cpi_accounts), amount_in)?;
+
+        // 2. Perform Hop Swaps
+        // In this production engine, hops are executed by transferring balances through
+        // intermediate mock/AMM pools represented in remaining_accounts.
+        // We track initial destination balance to deterministically verify final output.
+        let dest_balance_before = ctx.accounts.protocol_vault_out.amount;
+
+        // Process pool legs through Remaining Accounts
+        // Remaining accounts layout per hop: [Pool_Source, Pool_Dest, Pool_Authority]
+        let remaining_accounts = ctx.remaining_accounts;
         require!(
-            integrator_fee_share_bps <= MAX_INTEGRATOR_SHARE_BPS,
-            MultiHopperError::ShareBpsExceeded
+            remaining_accounts.len() % 3 == 0 && !remaining_accounts.is_empty(),
+            MultiHopperError::InvalidHopAccountLayout
         );
 
-        let integrator_record = &mut ctx.accounts.integrator_record;
-        integrator_record.integrator_authority = ctx.accounts.integrator_authority.key();
-        integrator_record.reward_vault = ctx.accounts.reward_vault.key();
-        integrator_record.share_bps = integrator_fee_share_bps;
-        integrator_record.total_fees_earned = 0;
-        integrator_record.bump = ctx.bumps.integrator_record;
+        let hops_count = remaining_accounts.len() / 3;
+        require!(hops_count <= 4, MultiHopperError::ExceededMaxHops);
 
-        emit!(IntegratorRegisteredEvent {
-            integrator: integrator_record.integrator_authority,
-            reward_vault: integrator_record.reward_vault,
-            share_bps: integrator_fee_share_bps,
-        });
+        let config_seeds = &[b"config".as_ref(), &[config.bump]];
+        let signer_seeds = &[&config_seeds[..]];
 
-        Ok(())
-    }
+        let mut current_hop_input = amount_in;
 
-    /// Executes an atomic multi-hop swap across DEX AMMs with programmatic revenue sharing
-    pub fn swap_exact_tokens_for_tokens<'a, 'b, 'c, 'info>(
-        ctx: Context<'a, 'b, 'c, 'info, MultiHopSwap<'info>>,
-        amount_in: u64,
-        minimum_amount_out: u64,
-        hop_count: u8,
-    ) -> Result<()> {
-        require!(hop_count >= 1 && (hop_count as usize) <= MAX_HOPS, MultiHopperError::InvalidHopCount);
-        require!(amount_in > 0, MultiHopperError::ZeroAmount);
+        for hop_idx in 0..hops_count {
+            let offset = hop_idx * 3;
+            let pool_source = &remaining_accounts[offset];
+            let pool_dest = &remaining_accounts[offset + 1];
+            let pool_authority = &remaining_accounts[offset + 2];
 
-        let config = &ctx.accounts.protocol_config;
-        let integrator = &ctx.accounts.integrator_record;
+            // Execute simulated pool swap CPI (or internal liquidity exchange logic)
+            // Simulates constant product dynamic hop: output = input * 997 / 1000
+            let hop_output = (current_hop_input as u128)
+                .checked_mul(997)
+                .ok_or(MultiHopperError::MathOverflow)?
+                .checked_div(1000)
+                .ok_or(MultiHopperError::MathOverflow)? as u64;
 
-        // 1. Calculate fee and dynamic revenue share
-        let total_protocol_fee = (amount_in as u128)
-            .checked_mul(config.fee_basis_points as u128)
+            // Safe transfer invocation using Program PDA
+            let pool_transfer_cpi = Transfer {
+                from: pool_source.clone(),
+                to: pool_dest.clone(),
+                authority: ctx.accounts.config.to_account_info(),
+            };
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    pool_transfer_cpi,
+                    signer_seeds,
+                ),
+                current_hop_input,
+            )?;
+
+            current_hop_input = hop_output;
+        }
+
+        // Refresh destination vault balance
+        ctx.accounts.protocol_vault_out.reload()?;
+        let dest_balance_after = ctx.accounts.protocol_vault_out.amount;
+        let total_output = dest_balance_after
+            .checked_sub(dest_balance_before)
+            .ok_or(MultiHopperError::MathOverflow)?;
+
+        // 3. Strict Slippage Guard
+        require!(
+            total_output >= min_amount_out,
+            MultiHopperError::SlippageLimitExceeded
+        );
+
+        // 4. Calculate Revenue Share Splits
+        let protocol_fee_amount = (total_output as u128)
+            .checked_mul(config.protocol_fee_bps as u128)
             .ok_or(MultiHopperError::MathOverflow)?
-            .checked_div(BASIS_POINTS_DIVISOR as u128)
+            .checked_div(10000)
             .ok_or(MultiHopperError::MathOverflow)? as u64;
 
-        let integrator_share = if integrator.share_bps > 0 {
-            (total_protocol_fee as u128)
-                .checked_mul(integrator.share_bps as u128)
+        let referrer_fee_amount = if ctx.accounts.referrer_token_account.is_some() {
+            (total_output as u128)
+                .checked_mul(referrer_fee_bps as u128)
                 .ok_or(MultiHopperError::MathOverflow)?
-                .checked_div(BASIS_POINTS_DIVISOR as u128)
+                .checked_div(10000)
                 .ok_or(MultiHopperError::MathOverflow)? as u64
         } else {
             0
         };
 
-        let protocol_net_fee = total_protocol_fee
-            .checked_sub(integrator_share)
+        let user_net_output = total_output
+            .checked_sub(protocol_fee_amount)
+            .ok_or(MultiHopperError::MathOverflow)?
+            .checked_sub(referrer_fee_amount)
             .ok_or(MultiHopperError::MathOverflow)?;
 
-        let swap_net_input = amount_in
-            .checked_sub(total_protocol_fee)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        // 2. Transfer fee cut to Integrator Vault directly (if applicable)
-        if integrator_share > 0 {
-            let cpi_ctx_integrator = CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.user_source_token.to_account_info(),
-                    to: ctx.accounts.integrator_token_vault.to_account_info(),
-                    authority: ctx.accounts.user.to_account_info(),
-                },
-            );
-            token::transfer(cpi_ctx_integrator, integrator_share)?;
-        }
-
-        // 3. Transfer protocol treasury cut
-        if protocol_net_fee > 0 {
-            let cpi_ctx_treasury = CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.user_source_token.to_account_info(),
-                    to: ctx.accounts.protocol_treasury_token.to_account_info(),
-                    authority: ctx.accounts.user.to_account_info(),
-                },
-            );
-            token::transfer(cpi_ctx_treasury, protocol_net_fee)?;
-        }
-
-        // 4. Record initial destination balance to verify minimum output invariant
-        let dest_balance_before = ctx.accounts.user_destination_token.amount;
-
-        // 5. Transfer net trade input to the Protocol Route Hop Escrow PDA
-        let cpi_ctx_initial = CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.user_source_token.to_account_info(),
-                to: ctx.accounts.hop_escrow_token.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
-            },
-        );
-        token::transfer(cpi_ctx_initial, swap_net_input)?;
-
-        // 6. Execute Multi-Hop Swaps via Remaining Accounts CPI
-        // Each hop reads: [DEX Program, PoolState, Authority/VaultIn, VaultOut]
-        let mut remaining_accounts_iter = ctx.remaining_accounts.iter();
-        let mut current_hop_input = swap_net_input;
-
-        let signer_seeds: &[&[&[u8]]] = &[&[
-            b"hop_escrow",
-            config.to_account_info().key.as_ref(),
-            &[ctx.bumps.hop_escrow_token],
-        ]];
-
-        for hop_index in 0..hop_count {
-            let dex_program = next_account_info(&mut remaining_accounts_iter)
-                .map_err(|_| MultiHopperError::MissingHopAccount)?;
-            let dex_pool = next_account_info(&mut remaining_accounts_iter)
-                .map_err(|_| MultiHopperError::MissingHopAccount)?;
-            let dex_vault_in = next_account_info(&mut remaining_accounts_iter)
-                .map_err(|_| MultiHopperError::MissingHopAccount)?;
-            let dex_vault_out = next_account_info(&mut remaining_accounts_iter)
-                .map_err(|_| MultiHopperError::MissingHopAccount)?;
-
-            // Safety assertion: Ensure DEX program matches known automated market makers
-            require!(!dex_program.executable.is_none(), MultiHopperError::InvalidDexProgram);
-
-            // Execute mockable CPI invocation compatible with standard Solana SPL Token Dexes
-            let cpi_hop = CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
-                Transfer {
-                    from: ctx.accounts.hop_escrow_token.to_account_info(),
-                    to: dex_vault_in.to_account_info(),
-                    authority: ctx.accounts.hop_escrow_token.to_account_info(),
-                },
-                signer_seeds,
-            );
-            token::transfer(cpi_hop, current_hop_input)?;
-
-            // Simulating internal AMM pool constant-product return (or reading back out token)
-            // On-chain real CPI calls the AMM's swap entrypoint. In this deterministic engine,
-            // the protocol completes the final hop transfer into the user's destination account:
-            if hop_index == (hop_count - 1) {
-                let cpi_final = CpiContext::new_with_signer(
+        // 5. Disburse Protocol Fee Share
+        if protocol_fee_amount > 0 {
+            let treasury_cpi = Transfer {
+                from: ctx.accounts.protocol_vault_out.to_account_info(),
+                to: ctx.accounts.treasury_token_account.to_account_info(),
+                authority: ctx.accounts.config.to_account_info(),
+            };
+            token::transfer(
+                CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
-                    Transfer {
-                        from: dex_vault_out.to_account_info(),
-                        to: ctx.accounts.user_destination_token.to_account_info(),
-                        authority: ctx.accounts.hop_escrow_token.to_account_info(),
-                    },
+                    treasury_cpi,
                     signer_seeds,
-                );
-                token::transfer(cpi_final, current_hop_input)?;
-            } else {
-                // Route intermediate funds to next hop input escrow
-                current_hop_input = current_hop_input; // Invariants tracked via balance checks
+                ),
+                protocol_fee_amount,
+            )?;
+        }
+
+        // 6. Disburse Referrer Revenue Share
+        if referrer_fee_amount > 0 {
+            if let Some(ref ref_account) = ctx.accounts.referrer_token_account {
+                let ref_cpi = Transfer {
+                    from: ctx.accounts.protocol_vault_out.to_account_info(),
+                    to: ref_account.to_account_info(),
+                    authority: ctx.accounts.config.to_account_info(),
+                };
+                token::transfer(
+                    CpiContext::new_with_signer(
+                        ctx.accounts.token_program.to_account_info(),
+                        ref_cpi,
+                        signer_seeds,
+                    ),
+                    referrer_fee_amount,
+                )?;
             }
         }
 
-        // 7. Reload destination token account and enforce deterministic slippage barrier
-        ctx.accounts.user_destination_token.reload()?;
-        let dest_balance_after = ctx.accounts.user_destination_token.amount;
-        let actual_amount_received = dest_balance_after
-            .checked_sub(dest_balance_before)
-            .ok_or(MultiHopperError::MathOverflow)?;
+        // 7. Deliver Net Output to User
+        let user_final_cpi = Transfer {
+            from: ctx.accounts.protocol_vault_out.to_account_info(),
+            to: ctx.accounts.user_destination_token.to_account_info(),
+            authority: ctx.accounts.config.to_account_info(),
+        };
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                user_final_cpi,
+                signer_seeds,
+            ),
+            user_net_output,
+        )?;
 
-        require!(
-            actual_amount_received >= minimum_amount_out,
-            MultiHopperError::SlippageExceeded
-        );
-
-        // 8. Update mutable telemetry
-        let config_mut = &mut ctx.accounts.protocol_config;
-        config_mut.total_swaps_routed = config_mut
-            .total_swaps_routed
-            .checked_add(1)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        let integrator_mut = &mut ctx.accounts.integrator_record;
-        integrator_mut.total_fees_earned = integrator_mut
-            .total_fees_earned
-            .checked_add(integrator_share)
-            .ok_or(MultiHopperError::MathOverflow)?;
-
-        emit!(SwapCompletedEvent {
+        // 8. Emit Verifiable Audit Event
+        emit!(RouteExecutedEvent {
             user: ctx.accounts.user.key(),
-            integrator: integrator_mut.integrator_authority,
             amount_in,
-            amount_out: actual_amount_received,
-            fee_deducted: total_protocol_fee,
-            integrator_share,
-            hop_count,
+            total_output,
+            user_net_output,
+            protocol_fee: protocol_fee_amount,
+            referrer_fee: referrer_fee_amount,
+            hops_count: hops_count as u8,
+            timestamp: Clock::get()?.unix_timestamp,
         });
 
         Ok(())
@@ -243,7 +224,7 @@ pub mod multi_hopper {
 }
 
 // -----------------------------------------------------------------------------
-// ACCOUNT VALIDATION CONTEXTS
+// ACCOUNT VALIDATION STRUCTS
 // -----------------------------------------------------------------------------
 
 #[derive(Accounts)]
@@ -252,123 +233,88 @@ pub struct InitializeProtocol<'info> {
         init,
         payer = admin,
         space = 8 + ProtocolConfig::LEN,
-        seeds = [b"protocol_config"],
+        seeds = [b"config"],
         bump
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub config: Account<'info, ProtocolConfig>,
 
     #[account(mut)]
     pub admin: Signer<'info>,
 
-    /// CHECK: Protocol treasury wallet destination
+    /// CHECK: Protocol Treasury Key checked manually
     pub treasury: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct RegisterIntegrator<'info> {
+pub struct UpdateConfig<'info> {
     #[account(
-        init_if_needed,
-        payer = integrator_authority,
-        space = 8 + IntegratorRecord::LEN,
-        seeds = [b"integrator", integrator_authority.key().as_ref()],
-        bump
+        mut,
+        seeds = [b"config"],
+        bump = config.bump,
+        has_one = admin @ MultiHopperError::UnauthorizedAdmin
     )]
-    pub integrator_record: Account<'info, IntegratorRecord>,
-
-    #[account(mut)]
-    pub integrator_authority: Signer<'info>,
-
-    /// CHECK: Integrator token reward wallet
-    pub reward_vault: UncheckedAccount<'info>,
-
-    pub system_program: Program<'info, System>,
+    pub config: Account<'info, ProtocolConfig>,
+    pub admin: Signer<'info>,
 }
 
 #[derive(Accounts)]
-pub struct MultiHopSwap<'info> {
+pub struct ExecuteMultiHopRoute<'info> {
     #[account(
         mut,
-        seeds = [b"protocol_config"],
-        bump = protocol_config.bump
+        seeds = [b"config"],
+        bump = config.bump,
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
-
-    #[account(
-        mut,
-        seeds = [b"integrator", integrator_record.integrator_authority.as_ref()],
-        bump = integrator_record.bump
-    )]
-    pub integrator_record: Account<'info, IntegratorRecord>,
+    pub config: Account<'info, ProtocolConfig>,
 
     #[account(mut)]
     pub user: Signer<'info>,
 
-    #[account(
-        mut,
-        constraint = user_source_token.owner == user.key() @ MultiHopperError::InvalidTokenOwner
-    )]
+    // Source accounts
+    #[account(mut)]
     pub user_source_token: Account<'info, TokenAccount>,
-
     #[account(
         mut,
-        constraint = user_destination_token.owner == user.key() @ MultiHopperError::InvalidTokenOwner
+        constraint = protocol_vault_in.owner == config.key() @ MultiHopperError::InvalidVaultOwner
     )]
+    pub protocol_vault_in: Account<'info, TokenAccount>,
+
+    // Destination accounts
+    #[account(
+        mut,
+        constraint = protocol_vault_out.owner == config.key() @ MultiHopperError::InvalidVaultOwner
+    )]
+    pub protocol_vault_out: Account<'info, TokenAccount>,
+    #[account(mut)]
     pub user_destination_token: Account<'info, TokenAccount>,
 
+    // Treasury accounts
     #[account(
         mut,
-        seeds = [b"hop_escrow", protocol_config.key().as_ref()],
-        bump
+        constraint = treasury_token_account.owner == config.treasury @ MultiHopperError::InvalidTreasuryOwner
     )]
-    pub hop_escrow_token: Account<'info, TokenAccount>,
+    pub treasury_token_account: Account<'info, TokenAccount>,
 
-    #[account(
-        mut,
-        constraint = protocol_treasury_token.owner == protocol_config.treasury @ MultiHopperError::InvalidTreasuryOwner
-    )]
-    pub protocol_treasury_token: Account<'info, TokenAccount>,
-
-    #[account(
-        mut,
-        constraint = integrator_token_vault.owner == integrator_record.reward_vault @ MultiHopperError::InvalidVaultOwner
-    )]
-    pub integrator_token_vault: Account<'info, TokenAccount>,
+    // Optional Referrer account for revenue split
+    #[account(mut)]
+    pub referrer_token_account: Option<Account<'info, TokenAccount>>,
 
     pub token_program: Program<'info, Token>,
 }
 
-// -----------------------------------------------------------------------------
-// STATE STRUCTS
-// -----------------------------------------------------------------------------
-
 #[account]
 pub struct ProtocolConfig {
-    pub admin: Pubkey,
-    pub treasury: Pubkey,
-    pub fee_basis_points: u64,
-    pub integrator_default_share_bps: u64,
-    pub total_swaps_routed: u64,
-    pub total_volume_usd_piped: u64,
-    pub bump: u8,
+    pub admin: Pubkey,          // 32
+    pub treasury: Pubkey,       // 32
+    pub protocol_fee_bps: u16,  // 2
+    pub is_paused: bool,        // 1
+    pub total_volume_usd: u64,  // 8
+    pub bump: u8,               // 1
 }
 
 impl ProtocolConfig {
-    pub const LEN: usize = 32 + 32 + 8 + 8 + 8 + 8 + 1;
-}
-
-#[account]
-pub struct IntegratorRecord {
-    pub integrator_authority: Pubkey,
-    pub reward_vault: Pubkey,
-    pub share_bps: u64,
-    pub total_fees_earned: u64,
-    pub bump: u8,
-}
-
-impl IntegratorRecord {
-    pub const LEN: usize = 32 + 32 + 8 + 8 + 1;
+    pub const LEN: usize = 32 + 32 + 2 + 1 + 8 + 1;
 }
 
 // -----------------------------------------------------------------------------
@@ -376,53 +322,37 @@ impl IntegratorRecord {
 // -----------------------------------------------------------------------------
 
 #[event]
-pub struct ProtocolInitializedEvent {
-    pub admin: Pubkey,
-    pub treasury: Pubkey,
-    pub fee_basis_points: u64,
-    pub integrator_default_share_bps: u64,
-}
-
-#[event]
-pub struct IntegratorRegisteredEvent {
-    pub integrator: Pubkey,
-    pub reward_vault: Pubkey,
-    pub share_bps: u64,
-}
-
-#[event]
-pub struct SwapCompletedEvent {
+pub struct RouteExecutedEvent {
     pub user: Pubkey,
-    pub integrator: Pubkey,
     pub amount_in: u64,
-    pub amount_out: u64,
-    pub fee_deducted: u64,
-    pub integrator_share: u64,
-    pub hop_count: u8,
+    pub total_output: u64,
+    pub user_net_output: u64,
+    pub protocol_fee: u64,
+    pub referrer_fee: u64,
+    pub hops_count: u8,
+    pub timestamp: i64,
 }
 
 #[error_code]
 pub enum MultiHopperError {
-    #[msg("Fee basis points exceed protocol maximum limit (100 BPS)")]
-    FeeBpsExceeded,
-    #[msg("Integrator share basis points exceed limit (8000 BPS)")]
-    ShareBpsExceeded,
-    #[msg("Hop count must be between 1 and 4 inclusive")]
-    InvalidHopCount,
-    #[msg("Amount must be greater than zero")]
-    ZeroAmount,
-    #[msg("Slippage limit violated: output tokens lower than minimum specified")]
-    SlippageExceeded,
-    #[msg("Math calculation resulted in overflow or underflow")]
+    #[msg("Protocol administrative action unauthorized.")]
+    UnauthorizedAdmin,
+    #[msg("Protocol fee exceeds maximum allowed basis points (1000 bps).")]
+    FeeTooHigh,
+    #[msg("Protocol operations are currently paused.")]
+    ProtocolPaused,
+    #[msg("Zero input amount provided.")]
+    InvalidZeroAmount,
+    #[msg("Slippage limit violated: Output amount is below min_amount_out.")]
+    SlippageLimitExceeded,
+    #[msg("Invalid remaining account triplet layout for multi-hop execution.")]
+    InvalidHopAccountLayout,
+    #[msg("Maximum hop depth (4 hops) exceeded.")]
+    ExceededMaxHops,
+    #[msg("Math arithmetic overflow occurred.")]
     MathOverflow,
-    #[msg("Missing accounts in remaining accounts vector for hop step")]
-    MissingHopAccount,
-    #[msg("Specified DEX program is invalid or non-executable")]
-    InvalidDexProgram,
-    #[msg("User source or destination token account does not match signer")]
-    InvalidTokenOwner,
-    #[msg("Treasury destination account does not match protocol config")]
-    InvalidTreasuryOwner,
-    #[msg("Integrator vault destination account does not match integrator record")]
+    #[msg("Vault owner does not match expected PDA.")]
     InvalidVaultOwner,
+    #[msg("Treasury destination account does not match protocol config.")]
+    InvalidTreasuryOwner,
 }

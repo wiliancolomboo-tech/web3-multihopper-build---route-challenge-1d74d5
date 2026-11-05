@@ -5,24 +5,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: multihopper-engine
     restart: always
     environment:
-      - PORT=8080
       - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - ROUTER_SIGNER_KEYPAIR=${ROUTER_SIGNER_KEYPAIR}
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - ENTERPRISE_WEBHOOK_URL=${ENTERPRISE_WEBHOOK_URL}
-      - TEST_COMPLIANCE_EMAIL=${TEST_COMPLIANCE_EMAIL}
+      - JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
+      - KEYPAIR_PATH=/secrets/id.json
+      - ALERT_WEBHOOK_URL=https://example.com/webhook/discord-placeholder
+      - METRICS_PORT=8080
+    volumes:
+      - ./secrets:/secrets:ro
     ports:
       - "8080:8080"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "20m"
-        max-file: "5"
+      start_period: 10s

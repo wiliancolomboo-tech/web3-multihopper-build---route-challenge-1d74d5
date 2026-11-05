@@ -1,14 +1,16 @@
-import http from "http";
+import http from 'http';
+
+const PORT = process.env.PORT || 8080;
 
 const server = http.createServer((req, res) => {
-  if (req.url === "/healthz") {
-    res.writeHead(200, { "Content-Type": "application/json" });
+  if (req.url === '/health' && req.method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
-        status: "HEALTHY",
+        status: 'UP',
         uptime: process.uptime(),
         timestamp: new Date().toISOString(),
-        engine: "MultiHopper-v1.0.0",
+        engine: 'MultiHopper Solana v1.0.0',
       })
     );
   } else {
@@ -16,4 +18,7 @@ const server = http.createServer((req, res) => {
     res.end();
   }
 });
-server.listen(8080, () => console.log("Telemetry healthcheck live on :8080/healthz"));
+
+server.listen(PORT, () => {
+  console.log(`[MultiHopper Monitoring] Healthcheck server live on port ${PORT}`);
+});

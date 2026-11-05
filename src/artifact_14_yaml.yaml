@@ -1,25 +1,24 @@
 version: '3.8'
 
 services:
-  multihopper-router:
+  multihopper-engine:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: multihopper-router
     restart: unless-stopped
-    ports:
-      - "8080:8080"
     environment:
       - NODE_ENV=production
-      - SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
-      - JITO_RELAYER_URL=https://mainnet.block-engine.jito.wtf/api/v1/bundles
-      - PROGRAM_ID=Hopp3rV111111111111111111111111111111111111
-      - KEYPAIR_PATH=/secrets/id.json
-      - RESEND_API_KEY=${RESEND_API_KEY}
-      - AUDIT_EMAIL_RECIPIENT=governance@multihopper.io
+      - PORT=8080
+      - SOLANA_RPC_URL=${SOLANA_RPC_URL:-https://api.mainnet-beta.solana.com}
+      - PROGRAM_ID=Hopp3rGcvw6jT6xJpP6F8YvK8C5V4Z9wX2E1M7N3Q8kL
+      - JITO_BLOCK_ENGINE_URL=https://mainnet.block-engine.jito.wtf
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - LOG_LEVEL=info
-    volumes:
-      - ./secrets:/secrets:ro
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - REPORT_EMAIL=${REPORT_EMAIL}
+    ports:
+      - "8080:8080"
     logging:
       driver: "json-file"
       options:

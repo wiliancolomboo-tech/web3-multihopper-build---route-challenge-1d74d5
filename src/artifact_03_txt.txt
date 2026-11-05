@@ -1,26 +1,17 @@
-+-------------------------------------------------------------------------------------------------+
-|                                 ENTERPRISE INTEGRATION TOPOLOGY                                 |
-+-------------------------------------------------------------------------------------------------+
-|                                                                                                 |
-|   [ Solana Mainnet / Devnet RPC Cluster ] <=== WebSocket (Blocks, Program Logs, Account Changes)|
-|                      ^                                                                          |
-|                      |                                                                          |
-|   [ Jito Block Engine (amsterdam/frankfurt/ny/slc) ] <=== gRPC / JSON-RPC Bundle Engine         |
-|                      ^                                                                          |
-|                      | (Jito Bundle with Miner Tip)                                             |
-|                      v                                                                          |
-|   +---------------------------------------------------------------+                             |
-|   |         MultiHopper Enterprise Orchestration Node             |                             |
-|   |  - Core Route Graph Compiler (Raydium / Orca / Phoenix)       |                             |
-|   |  - Atomic Instruction Encoder & Transaction Packer            |                             |
-|   |  - Slippage Bound Analyzer & Dynamic CU Budget Optimizers     |                             |
-|   +-------------------------------+-------------------------------+                             |
-|                                   |                                                             |
-|                   +---------------+---------------+                                             |
-|                   |                               |                                             |
-|                   v                               v                                             |
-|       [ Resend Transactional API ]     [ Slack / Discord Ops Alerts ]                           |
-|       - Executive Trade Summaries      - Execution Status, Slippage,                            |
-|       - Daily Arbitrage Digests        - Jito Tip Confirmations, Gas Used                       |
-|                                                                                                 |
-+-------------------------------------------------------------------------------------------------+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            ENTERPRISE TOPOLOGY                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   [Yellowstone gRPC] ──(Stream Slot/Pool Updates)──► [MultiHopper Engine]    │
+│                                                             │                │
+│                                                     (Jito Block Engine)      │
+│                                                             │                │
+│   [Prometheus] ◄──(Metrics :8080/metrics)───────────────────┤                │
+│                                                             │                │
+│   [Slack/Discord] ◄──(Execution Alerts / Slack Hook)────────┤                │
+│                                                             ▼                │
+│                                                   [Solana Mainnet-Beta]      │
+│                                                    Anchor Program:           │
+│                                                    MHop11111111111111111111  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘

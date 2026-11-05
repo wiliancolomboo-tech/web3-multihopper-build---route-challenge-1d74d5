@@ -1,52 +1,44 @@
 flowchart TD
-    subgraph ClientLayer["Client & Integration Layer"]
-        User["Trader / DApp Client"]
-        CLI["MultiHopper Agent CLI & Orchestrator"]
-        SlackHook["Slack / Discord Enterprise Webhook"]
-        ResendAPI["Resend Email Telemetry API"]
+    subgraph ClientLayer["Integrator / Institutional Client Layer"]
+        CLI["MultiHopper Routing Worker (TypeScript CLI)"]
+        RPC["Solana RPC Cluster (Jito / Triton / Helius)"]
     end
 
-    subgraph RoutingEngine["Off-Chain Routing & Solver Engine"]
-        PoolCache["In-Memory Pool State Cache (Geyser/RPC)"]
-        GraphSolver["Dijkstra Multi-Hop Path Optimizer"]
-        QuoteGen["Optimal Route & Calldata Generator"]
-        JitoRelay["Jito Block Engine (MEV Protection)"]
+    subgraph ProgramLayer["MultiHopper On-Chain Protocol (Solana Anchor)"]
+        Config["MultiHopper Global Config PDA"]
+        UserEscrow["Transient User Token PDA Escrow"]
+        RouterEngine["Atomic Multi-Hop Route Engine"]
+        RevSplitter["Partner Revenue Splitter"]
+        PartnerVault["Integrator Reward Accumulator PDA"]
+        TreasuryVault["Protocol Treasury Vault PDA"]
     end
 
-    subgraph SolanaRuntime["Solana On-Chain Program (multihopper_router)"]
-        ProgramEntry["Program Entry: execute_route"]
-        Hop1["Hop 1: Raydium CP-AMM / CLMM CPI"]
-        Hop2["Hop 2: Orca Whirlpool CPI"]
-        Hop3["Hop 3: Phoenix / OpenBook CPI"]
-        InvariantCheck["Balance Assertion: Output >= min_amount_out"]
-        RevShareSplit["Revenue Share Splitter (Protocol + Referral)"]
+    subgraph AMMLiquidity["Solana AMM Liquidity Layer (CPI)"]
+        Pool1["Hop 1: AMM Vault (Token A -> B)"]
+        Pool2["Hop 2: AMM Vault (Token B -> C)"]
+        Pool3["Hop 3: AMM Vault (Token C -> D)"]
     end
 
-    subgraph TokenVaults["SPL Token Accounts"]
-        UserATA["User Source / Destination ATA"]
-        TreasuryATA["Protocol Treasury Vault"]
-        ReferralATA["Partner / Referral Vault"]
+    subgraph TelemetryLayer["Enterprise Telemetry & Observability"]
+        Webhook["Discord / Slack Enterprise Webhook"]
+        ResendAPI["Resend Institutional Execution Engine"]
     end
 
-    User -->|1. Request Optimal Swap Quote| CLI
-    CLI -->|2. Query Pool Depth & Tick Arrays| PoolCache
-    PoolCache --> GraphSolver
-    GraphSolver --> QuoteGen
-    QuoteGen -->|3. Route with Max Net Yield| CLI
-    CLI -->|4. Build Tx with Instructions & Tip| JitoRelay
-    JitoRelay -->|5. Atomic Bundle Execution| SolanaRuntime
-
-    SolanaRuntime --> ProgramEntry
-    ProgramEntry --> Hop1
-    Hop1 -->|Intermediate Token A| Hop2
-    Hop2 -->|Intermediate Token B| Hop3
-    Hop3 --> InvariantCheck
-    InvariantCheck -->|Assertion OK| RevShareSplit
-    RevShareSplit -->|Net Swap Return| UserATA
-    RevShareSplit -->|Protocol Fee BPS| TreasuryATA
-    RevShareSplit -->|Referral BPS| ReferralATA
-
-    InvariantCheck -.->|Slippage Breached: REVERT| User
-
-    CLI -->|6. Async Execution Alert| SlackHook
-    CLI -->|7. Daily Settlement Report| ResendAPI
+    CLI -->|1. Fetch Optimal Route & Build Ix| RPC
+    RPC -->|2. Submit Signed Multi-Hop Tx| RouterEngine
+    RouterEngine -->|3. Validate Slippage & Assert Signers| Config
+    RouterEngine -->|4. Transfer Source In| UserEscrow
+    RouterEngine -->|5. CPI Hop 1| Pool1
+    Pool1 -->|Tokens Transferred| RouterEngine
+    RouterEngine -->|6. CPI Hop 2| Pool2
+    Pool2 -->|Tokens Transferred| RouterEngine
+    RouterEngine -->|7. CPI Hop 3| Pool3
+    Pool3 -->|Settled Output| RouterEngine
+    RouterEngine -->|8. Enforce min_amount_out| RouterEngine
+    RouterEngine -->|9. Compute & Distribute Fee| RevSplitter
+    RevSplitter -->|Integrator Share| PartnerVault
+    RevSplitter -->|Treasury Share| TreasuryVault
+    RouterEngine -->|10. Transfer Net Output| CLI
+    RouterEngine -->|11. Emit RouteExecuted Event| RPC
+    RPC -->|12. Webhook Ingestion| Webhook
+    RPC -->|13. Receipt Dispatch| ResendAPI

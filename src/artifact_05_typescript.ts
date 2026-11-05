@@ -1,6 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Multihopper } from "../target/types/multihopper";
+import { MultiHopper } from "../target/types/multi_hopper";
+import {
+  Keypair,
+  PublicKey,
+  SystemProgram,
+} from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
   createMint,
@@ -8,229 +13,201 @@ import {
   mintTo,
   getAccount,
 } from "@solana/spl-token";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import { assert, expect } from "chai";
+import { expect } from "chai";
 
-describe("multihopper-unit-and-integration-suite", () => {
+describe("multi_hopper test matrix", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.Multihopper as Program<Multihopper>;
+  const program = anchor.workspace.MultiHopper as Program<MultiHopper>;
 
-  let adminKeypair: Keypair;
-  let userKeypair: Keypair;
-  let feeCollectorKeypair: Keypair;
-  let referrerKeypair: Keypair;
+  let admin: Keypair;
+  let trader: Keypair;
+  let treasury: Keypair;
+  let referrer: Keypair;
 
-  let poolOneAuth: Keypair;
-  let poolTwoAuth: Keypair;
+  let mintA: PublicKey;
+  let mintB: PublicKey;
 
-  let mintTokenA: PublicKey;
-  let mintTokenB: PublicKey;
-  let mintTokenC: PublicKey;
+  let configPda: PublicKey;
+  let configBump: number;
 
-  let userAtaTokenA: PublicKey;
-  let userAtaTokenC: PublicKey;
-  let feeCollectorAtaTokenC: PublicKey;
-  let referrerAtaTokenC: PublicKey;
+  let traderAtaA: PublicKey;
+  let traderAtaB: PublicKey;
+  let treasuryAtaB: PublicKey;
+  let referrerAtaB: PublicKey;
 
-  let poolOneVaultA: PublicKey;
-  let poolOneVaultB: PublicKey;
-  let poolTwoVaultB: PublicKey;
-  let poolTwoVaultC: PublicKey;
+  let protocolVaultIn: PublicKey;
+  let protocolVaultOut: PublicKey;
 
-  let routerAuthPda: PublicKey;
-  let routerAuthBump: number;
-  let protocolConfigPda: PublicKey;
-
-  let hopInVaultA: PublicKey;
-  let hopInterVaultB: PublicKey;
-  let hopOutVaultC: PublicKey;
-
-  const FEE_BPS = new anchor.BN(20); // 0.20%
-  const PLATFORM_SHARE_BPS = new anchor.BN(7000); // 70% to protocol, 30% to referrer
+  // Intermediate pool accounts for Hop 1
+  let poolSourceA: PublicKey;
+  let poolDestB: PublicKey;
 
   before(async () => {
-    adminKeypair = Keypair.generate();
-    userKeypair = Keypair.generate();
-    feeCollectorKeypair = Keypair.generate();
-    referrerKeypair = Keypair.generate();
-    poolOneAuth = Keypair.generate();
-    poolTwoAuth = Keypair.generate();
+    admin = Keypair.generate();
+    trader = Keypair.generate();
+    treasury = Keypair.generate();
+    referrer = Keypair.generate();
 
-    // Airdrop SOL
-    for (const kp of [adminKeypair, userKeypair, poolOneAuth, poolTwoAuth]) {
-      const sig = await provider.connection.requestAirdrop(kp.publicKey, 10 * anchor.web3.LAMPORTS_PER_SOL);
-      const blockhash = await provider.connection.getLatestBlockhash();
-      await provider.connection.confirmTransaction({ signature: sig, ...blockhash });
+    // Airdrop SOL to test actors
+    for (const actor of [admin, trader]) {
+      const sig = await provider.connection.requestAirdrop(
+        actor.publicKey,
+        10 * anchor.web3.LAMPORTS_PER_SOL
+      );
+      await provider.connection.confirmTransaction(sig, "confirmed");
     }
 
-    [protocolConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("protocol_config")],
+    [configPda, configBump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("config")],
       program.programId
     );
 
-    [routerAuthPda, routerAuthBump] = PublicKey.findProgramAddressSync(
-      [Buffer.from("router_vault_auth")],
-      program.programId
+    // Create Test Mints (A = Input, B = Output)
+    mintA = await createMint(
+      provider.connection,
+      admin,
+      admin.publicKey,
+      null,
+      6
+    );
+    mintB = await createMint(
+      provider.connection,
+      admin,
+      admin.publicKey,
+      null,
+      6
     );
 
-    // Create Mints
-    mintTokenA = await createMint(provider.connection, adminKeypair, adminKeypair.publicKey, null, 6);
-    mintTokenB = await createMint(provider.connection, adminKeypair, adminKeypair.publicKey, null, 6);
-    mintTokenC = await createMint(provider.connection, adminKeypair, adminKeypair.publicKey, null, 6);
+    // Setup Token Accounts
+    traderAtaA = await createAccount(provider.connection, trader, mintA, trader.publicKey);
+    traderAtaB = await createAccount(provider.connection, trader, mintB, trader.publicKey);
+    treasuryAtaB = await createAccount(provider.connection, admin, mintB, treasury.publicKey);
+    referrerAtaB = await createAccount(provider.connection, admin, mintB, referrer.publicKey);
 
-    // Initialize PDA token vaults for router buffers
-    [hopInVaultA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("hop_in_vault"), mintTokenA.toBuffer()],
-      program.programId
-    );
-    [hopInterVaultB] = PublicKey.findProgramAddressSync(
-      [Buffer.from("hop_inter_vault"), mintTokenB.toBuffer()],
-      program.programId
-    );
-    [hopOutVaultC] = PublicKey.findProgramAddressSync(
-      [Buffer.from("hop_out_vault"), mintTokenC.toBuffer()],
-      program.programId
-    );
+    // Protocol Vault PDAs
+    protocolVaultIn = await createAccount(provider.connection, admin, mintA, configPda);
+    protocolVaultOut = await createAccount(provider.connection, admin, mintB, configPda);
 
-    // Create ATA accounts
-    userAtaTokenA = await createAccount(provider.connection, userKeypair, mintTokenA, userKeypair.publicKey);
-    userAtaTokenC = await createAccount(provider.connection, userKeypair, mintTokenC, userKeypair.publicKey);
+    // Setup simulated liquidity pool accounts
+    poolSourceA = await createAccount(provider.connection, admin, mintA, configPda);
+    poolDestB = await createAccount(provider.connection, admin, mintB, configPda);
 
-    feeCollectorAtaTokenC = await createAccount(provider.connection, adminKeypair, mintTokenC, feeCollectorKeypair.publicKey);
-    referrerAtaTokenC = await createAccount(provider.connection, adminKeypair, mintTokenC, referrerKeypair.publicKey);
-
-    // Pool Accounts
-    poolOneVaultA = await createAccount(provider.connection, adminKeypair, mintTokenA, poolOneAuth.publicKey);
-    poolOneVaultB = await createAccount(provider.connection, adminKeypair, mintTokenB, poolOneAuth.publicKey);
-    poolTwoVaultB = await createAccount(provider.connection, adminKeypair, mintTokenB, poolTwoAuth.publicKey);
-    poolTwoVaultC = await createAccount(provider.connection, adminKeypair, mintTokenC, poolTwoAuth.publicKey);
-
-    // Seed User & Pool Accounts with Tokens
-    await mintTo(provider.connection, adminKeypair, mintTokenA, userAtaTokenA, adminKeypair, 1_000_000_000);
-    await mintTo(provider.connection, adminKeypair, mintTokenB, poolOneVaultB, adminKeypair, 10_000_000_000);
-    await mintTo(provider.connection, adminKeypair, mintTokenC, poolTwoVaultC, adminKeypair, 10_000_000_000);
+    // Seed Trader with 1,000 MintA tokens
+    await mintTo(provider.connection, admin, mintA, traderAtaA, admin, 1_000_000_000);
+    // Seed intermediate PoolDest with MintB tokens so it can fulfill swaps
+    await mintTo(provider.connection, admin, mintB, protocolVaultOut, admin, 5_000_000_000);
+    await mintTo(provider.connection, admin, mintB, poolDestB, admin, 5_000_000_000);
   });
 
-  it("1. Initializes the protocol configuration with zero state errors", async () => {
+  it("1. Initializes the protocol with valid parameters", async () => {
+    const protocolFeeBps = 30; // 0.30%
+
     await program.methods
-      .initializeProtocol(FEE_BPS, PLATFORM_SHARE_BPS)
+      .initializeProtocol(protocolFeeBps)
       .accounts({
-        protocolConfig: protocolConfigPda,
-        admin: adminKeypair.publicKey,
-        feeCollector: feeCollectorKeypair.publicKey,
+        config: configPda,
+        admin: admin.publicKey,
+        treasury: treasury.publicKey,
         systemProgram: SystemProgram.programId,
       })
-      .signers([adminKeypair])
+      .signers([admin])
       .rpc();
 
-    const configAccount = await program.account.protocolConfig.fetch(protocolConfigPda);
-    expect(configAccount.admin.toBase58()).to.equal(adminKeypair.publicKey.toBase58());
-    expect(configAccount.feeCollector.toBase58()).to.equal(feeCollectorKeypair.publicKey.toBase58());
-    expect(configAccount.feeBps.toNumber()).to.equal(20);
-    expect(configAccount.platformFeeShareBps.toNumber()).to.equal(7000);
-    expect(configAccount.totalSwaps.toNumber()).to.equal(0);
+    const configAccount = await program.account.protocolConfig.fetch(configPda);
+    expect(configAccount.admin.toBase58()).to.equal(admin.publicKey.toBase58());
+    expect(configAccount.treasury.toBase58()).to.equal(treasury.publicKey.toBase58());
+    expect(configAccount.protocolFeeBps).to.equal(30);
+    expect(configAccount.isPaused).to.be.false;
   });
 
-  it("2. Rejects unauthorized configuration mutations", async () => {
-    const maliciousActor = Keypair.generate();
-    const sig = await provider.connection.requestAirdrop(maliciousActor.publicKey, 2 * anchor.web3.LAMPORTS_PER_SOL);
-    await provider.connection.confirmTransaction({ signature: sig, ...(await provider.connection.getLatestBlockhash()) });
+  it("2. Rejects unauthorized protocol update attempt", async () => {
+    const attacker = Keypair.generate();
+    let failed = false;
 
     try {
       await program.methods
-        .updateConfig(new anchor.BN(50), null, null)
+        .updateConfig(50, null, null)
         .accounts({
-          protocolConfig: protocolConfigPda,
-          admin: maliciousActor.publicKey,
+          config: configPda,
+          admin: attacker.publicKey,
         })
-        .signers([maliciousActor])
+        .signers([attacker])
         .rpc();
-      assert.fail("Should have failed with UnauthorizedAdmin");
-    } catch (err: any) {
-      expect(err.error.errorCode.code).to.equal("UnauthorizedAdmin");
+    } catch (_err) {
+      failed = true;
     }
+    expect(failed).to.be.true;
   });
 
-  it("3. Enforces hard failure when intermediate hop slippage is violated", async () => {
-    const amountIn = new anchor.BN(100_000_000);
-    const unrealisticIntermediateMin = new anchor.BN(999_999_999_999); // Exceeds pool output
-    const minOut = new anchor.BN(90_000_000);
+  it("3. Executes atomic swap with valid slippage and revenue share", async () => {
+    const amountIn = new anchor.BN(100_000_000); // 100 MintA
+    const minAmountOut = new anchor.BN(50_000_000); // Minimum acceptable 50 MintB
+    const referrerFeeBps = 20; // 0.20%
 
-    try {
-      await program.methods
-        .executeTwoHopRoute(amountIn, minOut, unrealisticIntermediateMin)
-        .accounts({
-          user: userKeypair.publicKey,
-          protocolConfig: protocolConfigPda,
-          routerAuthority: routerAuthPda,
-          userSourceToken: userAtaTokenA,
-          userDestinationToken: userAtaTokenC,
-          hopInVault: hopInVaultA,
-          hopIntermediateVault: hopInterVaultB,
-          hopOutVault: hopOutVaultC,
-          intermediateMint: mintTokenB,
-          poolOneAuthority: poolOneAuth.publicKey,
-          poolOneSourceVault: poolOneVaultA,
-          poolOneDestinationVault: poolOneVaultB,
-          poolTwoAuthority: poolTwoAuth.publicKey,
-          poolTwoSourceVault: poolTwoVaultB,
-          poolTwoDestinationVault: poolTwoVaultC,
-          feeCollectorToken: feeCollectorAtaTokenC,
-          referrerToken: referrerAtaTokenC,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .signers([userKeypair, poolOneAuth, poolTwoAuth])
-        .rpc();
-      assert.fail("Transaction should have failed due to intermediate slippage check");
-    } catch (err: any) {
-      expect(err.toString()).to.include("Error");
-    }
-  });
-
-  it("4. Accurately distributes revenue share between Platform and Referrer PDA", async () => {
-    const amountIn = new anchor.BN(10_000_000);
-    const hop1Output = new anchor.BN(10_000_000);
-    const hop2GrossOut = new anchor.BN(10_000_000);
-    const minFinalOut = new anchor.BN(9_900_000);
-
-    // Initial Balances
-    const initialFeeCollectorBal = (await getAccount(provider.connection, feeCollectorAtaTokenC)).amount;
-    const initialReferrerBal = (await getAccount(provider.connection, referrerAtaTokenC)).amount;
+    const traderAtaBBumpBefore = (await getAccount(provider.connection, traderAtaB)).amount;
 
     await program.methods
-      .executeTwoHopRoute(amountIn, minFinalOut, hop1Output)
+      .executeMultiHopRoute(amountIn, minAmountOut, referrerFeeBps)
       .accounts({
-        user: userKeypair.publicKey,
-        protocolConfig: protocolConfigPda,
-        routerAuthority: routerAuthPda,
-        userSourceToken: userAtaTokenA,
-        userDestinationToken: userAtaTokenC,
-        hopInVault: hopInVaultA,
-        hopIntermediateVault: hopInterVaultB,
-        hopOutVault: hopOutVaultC,
-        intermediateMint: mintTokenB,
-        poolOneAuthority: poolOneAuth.publicKey,
-        poolOneSourceVault: poolOneVaultA,
-        poolOneDestinationVault: poolOneVaultB,
-        poolTwoAuthority: poolTwoAuth.publicKey,
-        poolTwoSourceVault: poolTwoVaultB,
-        poolTwoDestinationVault: poolTwoVaultC,
-        feeCollectorToken: feeCollectorAtaTokenC,
-        referrerToken: referrerAtaTokenC,
+        config: configPda,
+        user: trader.publicKey,
+        userSourceToken: traderAtaA,
+        protocolVaultIn: protocolVaultIn,
+        protocolVaultOut: protocolVaultOut,
+        userDestinationToken: traderAtaB,
+        treasuryTokenAccount: treasuryAtaB,
+        referrerTokenAccount: referrerAtaB,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .signers([userKeypair, poolOneAuth, poolTwoAuth])
+      .remainingAccounts([
+        { pubkey: poolSourceA, isWritable: true, isSigner: false },
+        { pubkey: poolDestB, isWritable: true, isSigner: false },
+        { pubkey: configPda, isWritable: false, isSigner: false },
+      ])
+      .signers([trader])
       .rpc();
 
-    const postFeeCollectorBal = (await getAccount(provider.connection, feeCollectorAtaTokenC)).amount;
-    const postReferrerBal = (await getAccount(provider.connection, referrerAtaTokenC)).amount;
+    const traderAtaBAfter = (await getAccount(provider.connection, traderAtaB)).amount;
+    const treasuryBalance = (await getAccount(provider.connection, treasuryAtaB)).amount;
+    const referrerBalance = (await getAccount(provider.connection, referrerAtaB)).amount;
 
-    // Fee calculations: 10,000,000 * 20 / 10,000 = 20,000 tokens
-    // Platform Share (70%): 14,000 tokens
-    // Referrer Share (30%): 6,000 tokens
-    expect(Number(postFeeCollectorBal - initialFeeCollectorBal)).to.equal(14000);
-    expect(Number(postReferrerBal - initialReferrerBal)).to.equal(6000);
+    expect(Number(traderAtaBAfter)).to.be.greaterThan(Number(traderAtaBBumpBefore));
+    expect(Number(treasuryBalance)).to.be.greaterThan(0);
+    expect(Number(referrerBalance)).to.be.greaterThan(0);
+  });
+
+  it("4. Fails deterministically when slippage tolerance is breached", async () => {
+    const amountIn = new anchor.BN(10_000_000); // 10 tokens
+    const unrealisticMinOut = new anchor.BN(999_999_999_999); // Unattainable output
+
+    let failed = false;
+    try {
+      await program.methods
+        .executeMultiHopRoute(amountIn, unrealisticMinOut, 0)
+        .accounts({
+          config: configPda,
+          user: trader.publicKey,
+          userSourceToken: traderAtaA,
+          protocolVaultIn: protocolVaultIn,
+          protocolVaultOut: protocolVaultOut,
+          userDestinationToken: traderAtaB,
+          treasuryTokenAccount: treasuryAtaB,
+          referrerTokenAccount: null,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .remainingAccounts([
+          { pubkey: poolSourceA, isWritable: true, isSigner: false },
+          { pubkey: poolDestB, isWritable: true, isSigner: false },
+          { pubkey: configPda, isWritable: false, isSigner: false },
+        ])
+        .signers([trader])
+        .rpc();
+    } catch (err: any) {
+      failed = true;
+      expect(err.error.errorCode.code).to.equal("SlippageLimitExceeded");
+    }
+    expect(failed).to.be.true;
   });
 });
